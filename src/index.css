@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.pill {
+  font: 600 9px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: #fff;
+}
+.bare { background: transparent; outline: none; width: 100%; }
+.bare:focus { background: #fff; }
+
+@media print {
+  .no-print { display: none !important; }
+  .print-area {
+    position: static !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+  html, body { background: #fff !important; }
+  @page { margin: 0.6in; }
+}
