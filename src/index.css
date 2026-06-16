@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.pill {
+  font: 600 9px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: #fff;
+}
+.bare { background: transparent; outline: none; width: 100%; }
+.bare:focus { background: #fff; }
+
+.drag-handle {
+  cursor: grab;
+  color: #94a3b8;
+  user-select: none;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 1;
+}
+.drag-handle:hover { color: #475569; }
+.drag-handle:active { cursor: grabbing; }
+
+.dragging { opacity: 0.5; }
+
+@media print {
+  .no-print { display: none !important; }
+  .print-area {
+    position: static !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+  html, body { background: #fff !important; }
+  @page { margin: 0.6in; }
+}
