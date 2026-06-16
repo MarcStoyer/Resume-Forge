@@ -25,8 +25,6 @@ function flattenBullets(resume) {
   });
   return out;
 }
-
-// Collect entry-level info so the AI can also pick whole-entry on/off decisions.
 function flattenEntries(resume) {
   const out = [];
   resume.sections.forEach((sec) => {
@@ -38,17 +36,44 @@ function flattenEntries(resume) {
   return out;
 }
 
-export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, setCoverLetter, openCoverTab }) {
-  const [mode, setMode] = useState("pick"); // 'pick' | 'full'
+export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, setCoverLetter, openCoverTab, jobUrl, setJobUrl }) {
+  const [mode, setMode] = useState("pick");
   const [loading, setLoading] = useState(false);
   const [phase, setPhase] = useState("");
   const [err, setErr] = useState("");
   const [result, setResult] = useState(null);
-  // result shape: { mode, picks: [{...flat, rewrite?, why, checked, edited}], entries: [{entryId, keep, why}], summary?, coverLetter?, summaryChecked?, coverChecked? }
   const [snapshotBefore, setSnapshotBefore] = useState(null);
+  const [fetchingUrl, setFetchingUrl] = useState(false);
+
+  async function fetchFromUrl() {
+    if (!jobUrl?.trim()) { setErr("Paste a job posting URL first."); return; }
+    setErr(""); setFetchingUrl(true);
+    try {
+      const r = await fetch("/api/fetch-url", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: jobUrl.trim() }),
+      });
+      const data = await r.json();
+      if (!data.ok || !data.text) {
+        setErr((data.message || "Couldn't fetch that page.") + " Try pasting the description text instead.");
+        return;
+      }
+      // Ask Claude to extract just the job-description portion from the noisy page text.
+      const system = "You are given the raw text content of a job-posting web page (with nav, footer, and other noise). Extract ONLY the job description — title, responsibilities, qualifications, and about-the-role content. Omit navigation, cookie notices, footers, related jobs, application instructions. Return plain text, no markdown.";
+      const cd = await callClaude({ system, messages: [{ role: "user", content: data.text }], max_tokens: 3000 });
+      const clean = extractText(cd).trim();
+      if (clean) setJd(clean);
+      else setErr("Fetched the page but couldn't extract a job description. Try pasting it.");
+    } catch (e) {
+      setErr("URL fetch failed: " + e.message);
+    } finally {
+      setFetchingUrl(false);
+    }
+  }
 
   async function analyze() {
-    if (!jd.trim()) { setErr("Paste the job description first."); return; }
+    if (!jd.trim()) { setErr("Paste the job description first (or fetch from a URL)."); return; }
     setErr(""); setLoading(true); setResult(null);
     try {
       const flatB = flattenBullets(resume);
@@ -61,9 +86,9 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
       if (mode === "pick") {
         setPhase("Picking your best bullets and entries...");
         const system =
-          'You are an expert résumé tailorer. Choose the bullets that BEST match the role, and decide which whole entries (jobs/schools) to KEEP or REMOVE — remove an entry entirely if it does not fit the role (e.g., a finance job for a robotics technician position).\n' +
+          'You are an expert résumé tailorer. Choose the bullets that BEST match the role, and decide which whole entries (jobs/schools) to KEEP or REMOVE — remove an entry entirely if it does not fit the role.\n' +
           'Return ONLY JSON: {"picks":[{"i":<index>,"why":"<≤12 words>"}],"entries":[{"i":<index>,"keep":<true|false>,"why":"<≤12 words>"}],"rationale":"<one sentence>"}\n' +
-          'Pick 6–12 bullets. For entries, include EVERY entry in the input with an explicit keep:true/false. No markdown, no extra fields.';
+          'Pick 6–12 bullets. For entries, include EVERY entry in the input with explicit keep:true/false. No markdown, no extra fields.';
         const user = `JOB DESCRIPTION:\n${jd}\n\nENTRY CATALOG:\n${entryCatalog}\n\nBULLET CATALOG:\n${bulletCatalog}`;
         const data = await callClaude({ system, messages: [{ role: "user", content: user }], max_tokens: 2000 });
         const parsed = extractJSON(extractText(data));
@@ -78,7 +103,7 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
         setPhase("Tailoring bullets, summary, and cover letter...");
         const honestyDir = honestyPromptFragment(honesty);
         const system =
-          "You are an expert résumé and cover-letter writer. Write in FIRST PERSON, FORMAL tone (no contractions). Given a job description, a candidate's bullets, and their entries, choose bullets that best match the role, decide which whole entries to KEEP or REMOVE, rewrite chosen bullets, and write a tailored professional summary and cover letter.\n\n" +
+          "You are an expert résumé and cover-letter writer. Given a job description, a candidate's bullets, and their entries, choose bullets that best match the role, decide which whole entries to KEEP or REMOVE, rewrite chosen bullets, and write a tailored professional summary and cover letter.\n\n" +
           honestyDir + "\n\n" +
           'Return ONLY JSON in this shape:\n' +
           '{"picks":[{"i":<index>,"rewrite":"<rewritten bullet>","why":"<≤12 words>"}],' +
@@ -86,7 +111,7 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
           '"summary":"<2–3 sentence first-person professional summary>",' +
           '"coverLetter":"<300–400 word first-person formal cover letter starting with \\"Dear Hiring Manager,\\" — no date, no address block, no markdown>",' +
           '"rationale":"<one sentence>"}\n\n' +
-          "Pick 6–12 bullets. For entries, include EVERY entry with explicit keep. Each rewrite must honor the honesty mode above. " +
+          "Pick 6–12 bullets. For entries, include EVERY entry with explicit keep. Each rewrite must honor the bullet voice/honesty rules above (action verbs, no 'I'). " +
           synthDir + " Escape newlines in strings as \\n. No markdown, no extras.";
         const user =
           `JOB DESCRIPTION:\n${jd}\n\nCANDIDATE NAME: ${candidateName}\n\n` +
@@ -114,46 +139,15 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
     }
   }
 
-  function togglePick(i) {
-    setResult((r) => {
-      const n = deepClone(r);
-      n.picks[i].checked = !n.picks[i].checked;
-      return n;
-    });
-  }
-  function editPick(i, text) {
-    setResult((r) => {
-      const n = deepClone(r);
-      n.picks[i].edited = text;
-      return n;
-    });
-  }
-  function toggleEntry(i) {
-    setResult((r) => {
-      const n = deepClone(r);
-      n.entries[i].checked = !n.entries[i].checked;
-      return n;
-    });
-  }
-  function flipEntryKeep(i) {
-    setResult((r) => {
-      const n = deepClone(r);
-      n.entries[i].keep = !n.entries[i].keep;
-      return n;
-    });
-  }
-  function setAllPicks(on) {
-    setResult((r) => {
-      const n = deepClone(r);
-      n.picks.forEach((p) => (p.checked = on));
-      return n;
-    });
-  }
+  function togglePick(i) { setResult((r) => { const n = deepClone(r); n.picks[i].checked = !n.picks[i].checked; return n; }); }
+  function editPick(i, text) { setResult((r) => { const n = deepClone(r); n.picks[i].edited = text; return n; }); }
+  function toggleEntry(i) { setResult((r) => { const n = deepClone(r); n.entries[i].checked = !n.entries[i].checked; return n; }); }
+  function flipEntryKeep(i) { setResult((r) => { const n = deepClone(r); n.entries[i].keep = !n.entries[i].keep; return n; }); }
+  function setAllPicks(on) { setResult((r) => { const n = deepClone(r); n.picks.forEach((p) => (p.checked = on)); return n; }); }
 
   function applyPicks() {
     if (!result) return;
     setSnapshotBefore(deepClone(resume));
-
     const acceptedPicks = result.picks.filter((p) => p.checked);
     const pickSet = new Set(acceptedPicks.map((p) => p.bulletId || p.itemId));
     const rewrites = {};
@@ -169,8 +163,6 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
         if (p.bulletId && p.edited != null && p.edited !== p.text) rewrites[p.bulletId] = p.edited;
       });
     }
-
-    // Whole-entry keep/remove decisions
     const entryKeep = {};
     (result.entries || []).filter((e) => e.checked).forEach((e) => { entryKeep[e.entryId] = e.keep; });
 
@@ -192,15 +184,10 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
                 const rw = rewrites[b.id];
                 return { ...b, on: isPicked, text: rw ? rw : b.text, tag: rw ? "TAILORED" : b.tag };
               });
-              // Decide entry.on:
-              // - if AI explicitly said keep=false, turn off
-              // - if AI explicitly said keep=true, turn on
-              // - otherwise: on if it has any kept bullets
               let entryOn;
               if (explicitKeep === false) entryOn = false;
               else if (explicitKeep === true) entryOn = true;
               else entryOn = acceptedBulletIds.length > 0;
-              // Safety: if entry stays "on" but has no kept bullets, turn off
               if (entryOn && acceptedBulletIds.length === 0) entryOn = false;
               return { ...en, on: entryOn, bullets: newBullets };
             }),
@@ -209,9 +196,7 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
         return { ...sec, entries: sec.entries.map((it) => ({ ...it, on: pickSet.has(it.id) })) };
       }),
     };
-
     applyResume(next);
-
     if (result.mode === "full" && result.coverLetter && result.coverChecked && setCoverLetter) {
       setCoverLetter(result.coverLetter);
     }
@@ -232,13 +217,31 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
           <button onClick={undo} className="text-[11px] px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50">↶ Undo apply</button>
         )}
       </div>
+
+      {/* URL → JD fetch */}
+      <div className="mb-2 flex gap-2">
+        <input
+          value={jobUrl || ""}
+          onChange={(e) => setJobUrl && setJobUrl(e.target.value)}
+          placeholder="Job posting URL (optional — many sites need login; pasting text is usually faster)"
+          className="flex-1 text-xs border border-stone-200 rounded px-2 py-1.5 outline-none focus:border-stone-400"
+        />
+        <button
+          onClick={fetchFromUrl} disabled={fetchingUrl || !jobUrl?.trim()}
+          className="text-xs px-3 py-1.5 rounded border border-stone-300 hover:bg-stone-50 disabled:opacity-50"
+        >
+          {fetchingUrl ? "Fetching…" : "Fetch"}
+        </button>
+      </div>
+
       <textarea
         value={jd}
         onChange={(e) => setJd(e.target.value)}
         rows={5}
-        placeholder="Paste the full job description here…"
+        placeholder="…or paste the job description here directly."
         className="w-full text-sm border border-stone-200 rounded p-2 outline-none focus:border-stone-400"
       />
+
       <div className="mt-2 flex items-center gap-3 flex-wrap text-xs">
         <label className="flex items-center gap-1 cursor-pointer">
           <input type="radio" checked={mode === "pick"} onChange={() => setMode("pick")} className="accent-teal-800" />
@@ -250,12 +253,7 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
         </label>
       </div>
       <div className="flex items-center gap-2 mt-2">
-        <button
-          onClick={analyze}
-          disabled={loading}
-          className="px-3 py-1.5 rounded-md text-white text-xs font-medium disabled:opacity-50"
-          style={{ background: "#1f4e5f" }}
-        >
+        <button onClick={analyze} disabled={loading} className="px-3 py-1.5 rounded-md text-white text-xs font-medium disabled:opacity-50" style={{ background: "#1f4e5f" }}>
           {loading ? (phase || "Working…") : (mode === "full" ? "🚀 Auto-Tailor" : "🎯 Match my bullets")}
         </button>
         {result && (
@@ -275,7 +273,6 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
         <div className="mt-3 border-t border-stone-100 pt-3 space-y-3">
           {result.rationale && <div className="text-xs text-stone-600 italic">{result.rationale}</div>}
 
-          {/* Entry-level keep/remove */}
           {result.entries && result.entries.length > 0 && (
             <div>
               <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">Entries</div>
@@ -283,12 +280,7 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
                 {result.entries.map((e, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <input type="checkbox" checked={e.checked} onChange={() => toggleEntry(i)} className="w-3.5 h-3.5 accent-teal-800" />
-                    <button
-                      onClick={() => flipEntryKeep(i)}
-                      className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${e.keep ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-red-50 text-red-700 border border-red-200"}`}
-                    >
-                      {e.keep ? "KEEP" : "REMOVE"}
-                    </button>
+                    <button onClick={() => flipEntryKeep(i)} className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${e.keep ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-red-50 text-red-700 border border-red-200"}`}>{e.keep ? "KEEP" : "REMOVE"}</button>
                     <span className="text-stone-700">{e.org}</span>
                     <span className="text-stone-400 italic">— {e.role}</span>
                     {e.why && <span className="text-stone-400 italic ml-1">({e.why})</span>}
@@ -298,7 +290,6 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
             </div>
           )}
 
-          {/* Bullet picks */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Bullets ({checkedCount}/{result.picks.length} kept)</div>
@@ -316,15 +307,8 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
                   <div key={i} className="flex items-start gap-2 text-xs">
                     <input type="checkbox" checked={p.checked} onChange={() => togglePick(i)} className="mt-1.5 w-3.5 h-3.5 accent-teal-800 shrink-0" />
                     <div className={`flex-1 min-w-0 ${p.checked ? "" : "opacity-40"}`}>
-                      <textarea
-                        value={display}
-                        onChange={(e) => editPick(i, e.target.value)}
-                        rows={2}
-                        className="w-full text-xs leading-snug border border-stone-200 rounded px-1.5 py-1 outline-none focus:border-stone-400 resize-none bg-white"
-                      />
-                      {isRewritten && (
-                        <div className="text-stone-400 text-[10px] italic truncate mt-0.5">original: {p.text}</div>
-                      )}
+                      <textarea value={display} onChange={(e) => editPick(i, e.target.value)} rows={2} className="w-full text-xs leading-snug border border-stone-200 rounded px-1.5 py-1 outline-none focus:border-stone-400 resize-none bg-white" />
+                      {isRewritten && <div className="text-stone-400 text-[10px] italic truncate mt-0.5">original: {p.text}</div>}
                       {p.why && <div className="text-stone-500 text-[10px] italic">{p.why}</div>}
                     </div>
                   </div>
@@ -333,7 +317,6 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
             </div>
           </div>
 
-          {/* Summary & Cover Letter (full mode) */}
           {result.mode === "full" && (
             <>
               {result.summary && (
@@ -342,12 +325,7 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
                     <input type="checkbox" checked={!!result.summaryChecked} onChange={() => setResult((r) => ({ ...r, summaryChecked: !r.summaryChecked }))} className="w-3.5 h-3.5 accent-teal-800" />
                     Apply new summary
                   </label>
-                  <textarea
-                    value={result.summary}
-                    onChange={(e) => setResult((r) => ({ ...r, summary: e.target.value }))}
-                    rows={3}
-                    className="w-full text-xs border border-stone-200 rounded p-1.5 outline-none focus:border-stone-400"
-                  />
+                  <textarea value={result.summary} onChange={(e) => setResult((r) => ({ ...r, summary: e.target.value }))} rows={3} className="w-full text-xs border border-stone-200 rounded p-1.5 outline-none focus:border-stone-400" />
                 </div>
               )}
               {result.coverLetter && (
@@ -356,17 +334,11 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
                     <input type="checkbox" checked={!!result.coverChecked} onChange={() => setResult((r) => ({ ...r, coverChecked: !r.coverChecked }))} className="w-3.5 h-3.5 accent-teal-800" />
                     Apply new cover letter (editable in Cover Letter tab)
                   </label>
-                  <textarea
-                    value={result.coverLetter}
-                    onChange={(e) => setResult((r) => ({ ...r, coverLetter: e.target.value }))}
-                    rows={6}
-                    className="w-full text-xs border border-stone-200 rounded p-1.5 outline-none focus:border-stone-400 font-mono"
-                  />
+                  <textarea value={result.coverLetter} onChange={(e) => setResult((r) => ({ ...r, coverLetter: e.target.value }))} rows={6} className="w-full text-xs border border-stone-200 rounded p-1.5 outline-none focus:border-stone-400 font-mono" />
                 </div>
               )}
             </>
           )}
-
           <div className="text-[11px] text-stone-400">Review and edit each suggestion → uncheck what you don't want → click <b>Apply</b>. Use <b>Undo apply</b> to revert.</div>
         </div>
       )}

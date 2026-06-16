@@ -19,6 +19,7 @@ import { exportDocx } from "../lib/docxExport.js";
 import { callClaude } from "../lib/api.js";
 import { extractText, extractJSON, mapParsed } from "../lib/parse.js";
 import { deepClone, uid } from "../lib/util.js";
+import { historyEntry } from "../lib/funnel.js";
 
 function readFile(file, as) {
   return new Promise((resolve, reject) => {
@@ -31,18 +32,21 @@ function readFile(file, as) {
   });
 }
 
+// Tiny localStorage helper for jobUrl
+const loadJobUrl = () => { try { return localStorage.getItem("resumeforge:jobUrl") || ""; } catch (e) { return ""; } };
+const saveJobUrl = (v) => { try { localStorage.setItem("resumeforge:jobUrl", v); } catch (e) {} };
+
 export default function App() {
-  const [tab, setTab] = useState("resume"); // 'resume' | 'cover' | 'apps'
+  const [tab, setTab] = useState("resume");
   const [resume, setResume] = useState(() => loadResume() || defaultResume());
   const [templateId, setTemplateId] = useState(() => loadTemplate() || "classic");
   const [honesty, setHonesty] = useState(() => loadHonesty());
   const [coverLetter, setCoverLetter] = useState(() => loadCoverLetter());
   const [jd, setJd] = useState(() => loadJD());
+  const [jobUrl, setJobUrl] = useState(() => loadJobUrl());
   const [apps, setApps] = useState(() => loadApps());
-  // The "previous state" snapshot, populated when a saved application is Loaded.
   const [appSnapshot, setAppSnapshot] = useState(null);
 
-  // Upload state lives here so it survives tab switches
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
   const fileRef = useRef(null);
@@ -52,6 +56,7 @@ export default function App() {
   useEffect(() => { saveHonesty(honesty); }, [honesty]);
   useEffect(() => { saveCoverLetter(coverLetter); }, [coverLetter]);
   useEffect(() => { saveJD(jd); }, [jd]);
+  useEffect(() => { saveJobUrl(jobUrl); }, [jobUrl]);
   useEffect(() => { saveApps(apps); }, [apps]);
 
   const template = getTemplate(templateId);
@@ -97,38 +102,46 @@ export default function App() {
     }
   }
 
-  function saveApplication() {
-    // Try to guess label/company/role from JD first line
-    let label = "";
-    let role = "";
-    let company = "";
+  // Build a fresh app object from current state. Used by both save buttons.
+  function buildAppRecord(status = "saved") {
     const firstLine = (jd || "").split("\n").find((l) => l.trim().length > 0) || "";
-    if (firstLine) {
-      label = firstLine.trim().slice(0, 80);
-    }
-    label = prompt("Label for this application?", label) || label;
-    if (!label) return;
-    company = prompt("Company name? (optional)", company) || "";
-    role = prompt("Role title? (optional)", role) || "";
-    const app = {
+    const guessLabel = firstLine.trim().slice(0, 80) || "Untitled";
+    const label = prompt("Label?", guessLabel) || guessLabel;
+    if (!label) return null;
+    const company = prompt("Company name? (optional)", "") || "";
+    const role = prompt("Role title? (optional)", "") || "";
+    return {
       id: uid(),
       label, company, role,
       savedAt: Date.now(),
-      jd,
+      jd, jobUrl,
       resume: deepClone(resume),
       coverLetter,
       templateId,
       honesty,
+      status,
+      statusHistory: [historyEntry(status)],
+      notes: "",
     };
-    setApps((a) => [...a, app]);
+  }
+  function saveApplication() {
+    const rec = buildAppRecord("saved");
+    if (!rec) return;
+    setApps((a) => [...a, rec]);
     alert("Saved! Find it in the Applications tab.");
+  }
+  function markAppliedNow() {
+    const rec = buildAppRecord("applied");
+    if (!rec) return;
+    setApps((a) => [...a, rec]);
+    setTab("apps");
   }
 
   function loadApplication(app) {
-    // Accepts either a full app object or a {resume, coverLetter, jd} snapshot.
     if (app.resume) setResume(deepClone(app.resume));
     if (typeof app.coverLetter === "string") setCoverLetter(app.coverLetter);
     if (typeof app.jd === "string") setJd(app.jd);
+    if (typeof app.jobUrl === "string") setJobUrl(app.jobUrl);
     if (app.templateId) setTemplateId(app.templateId);
     if (typeof app.honesty === "number") setHonesty(app.honesty);
     setTab("resume");
@@ -140,6 +153,7 @@ export default function App() {
     setResume(defaultResume());
     setCoverLetter("");
     setJd("");
+    setJobUrl("");
   }
 
   return (
@@ -170,8 +184,11 @@ export default function App() {
           <button onClick={() => fileRef.current?.click()} disabled={uploading} className="px-3 py-2 rounded-md text-sm font-medium border border-stone-300 hover:bg-stone-50 disabled:opacity-50">
             {uploading ? "Parsing…" : "📥 Upload CV"}
           </button>
-          <button onClick={saveApplication} disabled={!jd && !resume.profile.text} className="px-3 py-2 rounded-md text-sm border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50" title="Save current résumé+cover+JD as an application">
-            ★ Save application
+          <button onClick={markAppliedNow} disabled={!jd} className="px-3 py-2 rounded-md text-sm border border-sky-300 text-sky-700 hover:bg-sky-50 disabled:opacity-50" title="Save a snapshot of this résumé+cover+JD with status 'Applied'">
+            ✓ Applied with this
+          </button>
+          <button onClick={saveApplication} disabled={!jd && !resume.profile.text} className="px-3 py-2 rounded-md text-sm border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50" title="Bookmark current state for later (status 'Saved')">
+            ★ Save
           </button>
           <label className="text-xs text-stone-500 flex items-center gap-1.5">
             Template:
@@ -196,6 +213,7 @@ export default function App() {
               resume={resume} setResume={setResume}
               honesty={honesty} setHonesty={setHonesty}
               jd={jd} setJd={setJd}
+              jobUrl={jobUrl} setJobUrl={setJobUrl}
               setCoverLetter={setCoverLetter}
               openCoverTab={() => setTab("cover")}
             />

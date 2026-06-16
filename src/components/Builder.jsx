@@ -11,10 +11,12 @@ import { callClaude } from "../lib/api.js";
 import { extractText, extractJSON } from "../lib/parse.js";
 import { honestyPromptFragment } from "../lib/honesty.js";
 
-export default function Builder({
-  resume, setResume, honesty, setHonesty, jd, setJd,
-  setCoverLetter, openCoverTab,
-}) {
+  export default function Builder({
+    resume, setResume, honesty, setHonesty, jd, setJd,
+    jobUrl, setJobUrl,
+    setCoverLetter, openCoverTab,
+  }) {
+
   const [loadingMap, setLoadingMap] = useState({});
   const [err, setErr] = useState("");
   const [collapsed, setCollapsed] = useState({});
@@ -193,7 +195,7 @@ export default function Builder({
       <div className="text-xs text-stone-500 text-right">{selectedCount} bullets selected</div>
 
       <HonestySlider value={honesty} onChange={setHonesty} />
-      <JobMatcher resume={resume} applyResume={setResume} honesty={honesty} jd={jd} setJd={setJd} setCoverLetter={setCoverLetter} openCoverTab={openCoverTab} />
+      <JobMatcher resume={resume} applyResume={setResume} honesty={honesty} jd={jd} setJd={setJd} jobUrl={jobUrl} setJobUrl={setJobUrl} setCoverLetter={setCoverLetter} openCoverTab={openCoverTab} />
 
       <div className="bg-white rounded-lg border border-stone-200 p-4">
         <div className="text-xs font-semibold uppercase tracking-wide text-stone-400 mb-3">Contact</div>
