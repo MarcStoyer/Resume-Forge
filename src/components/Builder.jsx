@@ -11,15 +11,15 @@ import { callClaude } from "../lib/api.js";
 import { extractText, extractJSON } from "../lib/parse.js";
 import { honestyPromptFragment } from "../lib/honesty.js";
 
-  export default function Builder({
-    resume, setResume, honesty, setHonesty, jd, setJd,
-    jobUrl, setJobUrl,
-    setCoverLetter, openCoverTab,
-  }) {
-
+export default function Builder({
+  resume, setResume, honesty, setHonesty, jd, setJd,
+  jobUrl, setJobUrl,
+  setCoverLetter, openCoverTab,
+}) {
   const [loadingMap, setLoadingMap] = useState({});
   const [err, setErr] = useState("");
-  const [collapsed, setCollapsed] = useState({});
+  const [collapsed, setCollapsed] = useState({});         // sectionId -> bool
+  const [entryCollapsed, setEntryCollapsed] = useState({}); // entryId -> bool
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -62,11 +62,9 @@ import { honestyPromptFragment } from "../lib/honesty.js";
     const kind = confirm("OK = list-style (simple items). Cancel = entries-style (jobs/schools with bullets).") ? "list" : "entries";
     const newSec = {
       id: "custom_" + uid(),
-      title: name.trim(),
-      kind,
+      title: name.trim(), kind,
       addLabel: kind === "entries" ? "+ Add entry" : "+ Add item",
-      removable: true,
-      entries: [],
+      removable: true, entries: [],
     };
     setResume((r) => ({ ...r, sections: [...r.sections, newSec] }));
   }
@@ -79,6 +77,26 @@ import { honestyPromptFragment } from "../lib/honesty.js";
     const name = prompt("New section name?", sec?.title || "");
     if (!name || !name.trim()) return;
     mapSec(secId, (s) => ({ ...s, title: name.trim() }));
+  }
+
+  // Collapse-all shortcuts
+  function collapseAllInSection(secId) {
+    const sec = resume.sections.find((s) => s.id === secId);
+    if (!sec || sec.kind !== "entries") return;
+    setEntryCollapsed((m) => {
+      const n = { ...m };
+      sec.entries.forEach((e) => { n[e.id] = true; });
+      return n;
+    });
+  }
+  function expandAllInSection(secId) {
+    const sec = resume.sections.find((s) => s.id === secId);
+    if (!sec || sec.kind !== "entries") return;
+    setEntryCollapsed((m) => {
+      const n = { ...m };
+      sec.entries.forEach((e) => { n[e.id] = false; });
+      return n;
+    });
   }
 
   function onDragEndSections(e) {
@@ -119,7 +137,7 @@ import { honestyPromptFragment } from "../lib/honesty.js";
   async function genBullets(secId, entry, mode) {
     setLoading(entry.id, mode); setErr("");
     try {
-      const system = "You are an expert résumé writer. Return ONLY a JSON array of exactly 5 strings. Each is one concise, achievement-oriented résumé bullet (max ~25 words) written in first person (omit \"I\"), no leading dash, no numbering, no markdown.";
+      const system = "You are an expert résumé writer. Return ONLY a JSON array of exactly 5 strings. Each is one concise, achievement-oriented résumé bullet (max ~25 words) using implied-subject action verbs (e.g. 'Built', 'Architected'). Never start with 'I'. No leading dash, no numbering, no markdown.";
       const user = mode === "web"
         ? `Search the web for the role "${entry.role}" at "${entry.org}". Using real current job listings for this or similar roles, write 5 résumé bullets reflecting key responsibilities.`
         : `Write 5 strong, specific, achievement-oriented résumé bullets for the role "${entry.role}" at "${entry.org}". Be concrete.`;
@@ -174,7 +192,6 @@ import { honestyPromptFragment } from "../lib/honesty.js";
     } catch (e) { setErr("Summary failed: " + e.message); }
     finally { setLoading("__profile", null); }
   }
-
   function revertSummary() {
     if (resume.profile.original) setResume((r) => ({ ...r, profile: { ...r.profile, text: r.profile.original } }));
   }
@@ -191,7 +208,6 @@ import { honestyPromptFragment } from "../lib/honesty.js";
           {err} <button onClick={() => setErr("")} className="underline ml-2">dismiss</button>
         </div>
       )}
-
       <div className="text-xs text-stone-500 text-right">{selectedCount} bullets selected</div>
 
       <HonestySlider value={honesty} onChange={setHonesty} />
@@ -233,129 +249,168 @@ import { honestyPromptFragment } from "../lib/honesty.js";
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEndSections}>
         <SortableContext items={resume.sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-          {resume.sections.map((sec) => (
-            <Sortable key={sec.id} id={sec.id}>
-              {({ dragHandleProps }) => (
-                <div className="bg-white rounded-lg border border-stone-200">
-                  <div className="flex items-center justify-between px-3 py-2.5 border-b border-stone-100">
-                    <div className="flex items-center gap-1">
-                      <span className="drag-handle" {...dragHandleProps} title="Drag section">⋮⋮</span>
-                      <button onClick={() => setCollapsed((c) => ({ ...c, [sec.id]: !c[sec.id] }))} className="font-semibold text-stone-800 text-sm flex items-center gap-2">
-                        <span className="text-stone-400">{collapsed[sec.id] ? "▸" : "▾"}</span>{sec.title}
-                      </button>
-                      <button onClick={() => renameSection(sec.id)} className="text-[10px] text-stone-400 hover:text-stone-700 ml-1">✎</button>
+          {resume.sections.map((sec) => {
+            const secCollapsed = collapsed[sec.id];
+            return (
+              <Sortable key={sec.id} id={sec.id}>
+                {({ dragHandleProps }) => (
+                  <div className="bg-white rounded-lg border border-stone-200">
+                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-stone-100">
+                      <div className="flex items-center gap-1">
+                        <span className="drag-handle" {...dragHandleProps} title="Drag section">⋮⋮</span>
+                        <button onClick={() => setCollapsed((c) => ({ ...c, [sec.id]: !c[sec.id] }))} className="font-semibold text-stone-800 text-sm flex items-center gap-2">
+                          <span className="text-stone-400">{secCollapsed ? "▸" : "▾"}</span>{sec.title}
+                          {secCollapsed && sec.kind === "entries" && (
+                            <span className="text-[10px] text-stone-400 font-normal">
+                              ({sec.entries.filter((e) => e.on).length}/{sec.entries.length} entries)
+                            </span>
+                          )}
+                          {secCollapsed && sec.kind !== "entries" && (
+                            <span className="text-[10px] text-stone-400 font-normal">
+                              ({sec.entries.filter((e) => e.on).length}/{sec.entries.length} items)
+                            </span>
+                          )}
+                        </button>
+                        <button onClick={() => renameSection(sec.id)} className="text-[10px] text-stone-400 hover:text-stone-700 ml-1">✎</button>
+                      </div>
+                      <div className="flex gap-2 text-[11px] items-center">
+                        {!secCollapsed && sec.kind === "entries" && (
+                          <>
+                            <button onClick={() => collapseAllInSection(sec.id)} className="text-stone-500 hover:text-stone-800" title="Collapse all entries in this section">⇈</button>
+                            <button onClick={() => expandAllInSection(sec.id)} className="text-stone-500 hover:text-stone-800" title="Expand all entries in this section">⇊</button>
+                            <span className="text-stone-300">|</span>
+                          </>
+                        )}
+                        <button onClick={() => setAllInSection(sec.id, true)} className="text-stone-500 hover:text-teal-700">All</button>
+                        <span className="text-stone-300">|</span>
+                        <button onClick={() => setAllInSection(sec.id, false)} className="text-stone-500 hover:text-red-600">None</button>
+                        {sec.removable && (
+                          <>
+                            <span className="text-stone-300">|</span>
+                            <button onClick={() => deleteSection(sec.id)} className="text-stone-400 hover:text-red-600">Delete</button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-2 text-[11px] items-center">
-                      <button onClick={() => setAllInSection(sec.id, true)} className="text-stone-500 hover:text-teal-700">All</button>
-                      <span className="text-stone-300">|</span>
-                      <button onClick={() => setAllInSection(sec.id, false)} className="text-stone-500 hover:text-red-600">None</button>
-                      {sec.removable && (
-                        <>
-                          <span className="text-stone-300">|</span>
-                          <button onClick={() => deleteSection(sec.id)} className="text-stone-400 hover:text-red-600">Delete</button>
-                        </>
-                      )}
-                    </div>
-                  </div>
 
-                  {!collapsed[sec.id] && (
-                    <div className="p-3 space-y-3">
-                      {sec.kind === "entries" ? (
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEndEntries(sec.id)}>
-                          <SortableContext items={sec.entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                            {sec.entries.map((en) => (
-                              <Sortable key={en.id} id={en.id}>
-                                {({ dragHandleProps: enHandle }) => (
-                                  <div className={`rounded-md border p-3 ${en.on ? "border-stone-200 bg-stone-50" : "border-stone-100 bg-stone-100/50"}`}>
-                                    <div className="flex items-start gap-2">
-                                      <span className="drag-handle mt-1" {...enHandle}>⋮⋮</span>
-                                      <input type="checkbox" checked={en.on} onChange={() => patchEntry(sec.id, en.id, { on: !en.on })} title="Include this whole entry" className="mt-1.5 w-4 h-4 accent-teal-800 shrink-0" />
-                                      <div className="flex-1">
-                                        <div className="grid grid-cols-2 gap-1.5">
-                                          <input className="bare text-sm font-semibold border-b border-stone-200 px-1 py-0.5" value={en.org} onChange={(e) => patchEntry(sec.id, en.id, { org: e.target.value })} />
-                                          <input className="bare text-sm text-stone-500 border-b border-stone-200 px-1 py-0.5 text-right" value={en.dates} onChange={(e) => patchEntry(sec.id, en.id, { dates: e.target.value })} />
-                                          <input className="bare text-xs italic text-stone-600 border-b border-stone-100 px-1 py-0.5" value={en.role} onChange={(e) => patchEntry(sec.id, en.id, { role: e.target.value })} />
-                                          <input className="bare text-xs text-stone-500 border-b border-stone-100 px-1 py-0.5 text-right" value={en.loc} onChange={(e) => patchEntry(sec.id, en.id, { loc: e.target.value })} />
+                    {!secCollapsed && (
+                      <div className="p-3 space-y-3">
+                        {sec.kind === "entries" ? (
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEndEntries(sec.id)}>
+                            <SortableContext items={sec.entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+                              {sec.entries.map((en) => {
+                                const enCollapsed = entryCollapsed[en.id];
+                                const onCount = en.bullets.filter((b) => b.on).length;
+                                return (
+                                  <Sortable key={en.id} id={en.id}>
+                                    {({ dragHandleProps: enHandle }) => (
+                                      <div className={`rounded-md border p-3 ${en.on ? "border-stone-200 bg-stone-50" : "border-stone-100 bg-stone-100/50"}`}>
+                                        <div className="flex items-start gap-2">
+                                          <span className="drag-handle mt-1" {...enHandle}>⋮⋮</span>
+                                          <input type="checkbox" checked={en.on} onChange={() => patchEntry(sec.id, en.id, { on: !en.on })} title="Include this whole entry" className="mt-1.5 w-4 h-4 accent-teal-800 shrink-0" />
+                                          <button
+                                            onClick={() => setEntryCollapsed((m) => ({ ...m, [en.id]: !m[en.id] }))}
+                                            className="text-stone-400 hover:text-stone-700 mt-1 text-xs shrink-0"
+                                            title={enCollapsed ? "Expand bullets" : "Collapse bullets"}
+                                          >
+                                            {enCollapsed ? "▸" : "▾"}
+                                          </button>
+                                          <div className="flex-1">
+                                            <div className="grid grid-cols-2 gap-1.5">
+                                              <input className="bare text-sm font-semibold border-b border-stone-200 px-1 py-0.5" value={en.org} onChange={(e) => patchEntry(sec.id, en.id, { org: e.target.value })} />
+                                              <input className="bare text-sm text-stone-500 border-b border-stone-200 px-1 py-0.5 text-right" value={en.dates} onChange={(e) => patchEntry(sec.id, en.id, { dates: e.target.value })} />
+                                              <input className="bare text-xs italic text-stone-600 border-b border-stone-100 px-1 py-0.5" value={en.role} onChange={(e) => patchEntry(sec.id, en.id, { role: e.target.value })} />
+                                              <input className="bare text-xs text-stone-500 border-b border-stone-100 px-1 py-0.5 text-right" value={en.loc} onChange={(e) => patchEntry(sec.id, en.id, { loc: e.target.value })} />
+                                            </div>
+                                            {enCollapsed ? (
+                                              <div className="mt-1.5 text-[11px] text-stone-500 italic">
+                                                {onCount}/{en.bullets.length} bullets · click ▸ to expand
+                                              </div>
+                                            ) : (
+                                              <div className="flex gap-2 mt-2 flex-wrap">
+                                                <button onClick={() => genBullets(sec.id, en, "web")} disabled={!!loadingMap[en.id]} className="text-[11px] px-2 py-1 rounded border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50">{loadingMap[en.id] === "web" ? "Searching…" : "🔍 Find bullets"}</button>
+                                                <button onClick={() => genBullets(sec.id, en, "ai")} disabled={!!loadingMap[en.id]} className="text-[11px] px-2 py-1 rounded border border-violet-200 text-violet-700 hover:bg-violet-50 disabled:opacity-50">{loadingMap[en.id] === "ai" ? "Writing…" : "✨ AI write"}</button>
+                                                <button onClick={() => addBullets(sec.id, en.id, ["New bullet"], "IMPACT")} className="text-[11px] px-2 py-1 rounded border border-stone-200 text-stone-500 hover:bg-white">+ bullet</button>
+                                                <button onClick={() => setAllBullets(sec.id, en.id, true)} className="text-[11px] px-2 py-1 rounded text-stone-500 hover:text-teal-700">All</button>
+                                                <button onClick={() => setAllBullets(sec.id, en.id, false)} className="text-[11px] px-2 py-1 rounded text-stone-500 hover:text-red-600">None</button>
+                                                <button onClick={() => delEntry(sec.id, en.id)} className="text-[11px] px-2 py-1 rounded text-stone-400 hover:text-red-600 ml-auto">Delete</button>
+                                              </div>
+                                            )}
+                                          </div>
                                         </div>
-                                        <div className="flex gap-2 mt-2 flex-wrap">
-                                          <button onClick={() => genBullets(sec.id, en, "web")} disabled={!!loadingMap[en.id]} className="text-[11px] px-2 py-1 rounded border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50">{loadingMap[en.id] === "web" ? "Searching…" : "🔍 Find bullets"}</button>
-                                          <button onClick={() => genBullets(sec.id, en, "ai")} disabled={!!loadingMap[en.id]} className="text-[11px] px-2 py-1 rounded border border-violet-200 text-violet-700 hover:bg-violet-50 disabled:opacity-50">{loadingMap[en.id] === "ai" ? "Writing…" : "✨ AI write"}</button>
-                                          <button onClick={() => addBullets(sec.id, en.id, ["New bullet"], "IMPACT")} className="text-[11px] px-2 py-1 rounded border border-stone-200 text-stone-500 hover:bg-white">+ bullet</button>
-                                          <button onClick={() => setAllBullets(sec.id, en.id, true)} className="text-[11px] px-2 py-1 rounded text-stone-500 hover:text-teal-700">All</button>
-                                          <button onClick={() => setAllBullets(sec.id, en.id, false)} className="text-[11px] px-2 py-1 rounded text-stone-500 hover:text-red-600">None</button>
-                                          <button onClick={() => delEntry(sec.id, en.id)} className="text-[11px] px-2 py-1 rounded text-stone-400 hover:text-red-600 ml-auto">Delete</button>
-                                        </div>
+                                        {!enCollapsed && (
+                                          <div className={`mt-2 space-y-1.5 ${en.on ? "" : "opacity-40"}`}>
+                                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEndBullets(sec.id, en.id)}>
+                                              <SortableContext items={en.bullets.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+                                                {en.bullets.map((b) => (
+                                                  <Sortable key={b.id} id={b.id}>
+                                                    {({ dragHandleProps: bHandle }) => (
+                                                      <div className="flex items-start gap-2">
+                                                        <span className="drag-handle mt-1" {...bHandle}>⋮⋮</span>
+                                                        <input type="checkbox" checked={b.on} onChange={() => patchBullet(sec.id, en.id, b.id, { on: !b.on })} className="mt-1.5 w-4 h-4 accent-teal-800 shrink-0" />
+                                                        <span className="pill mt-0.5 shrink-0" style={{ background: TAG_COLORS[b.tag] || "#888" }}>{b.tag}</span>
+                                                        <textarea
+                                                          value={b.text}
+                                                          onChange={(e) => patchBullet(sec.id, en.id, b.id, { text: e.target.value })}
+                                                          rows={1}
+                                                          className={`bare flex-1 text-sm leading-snug resize-none border border-transparent hover:border-stone-200 rounded px-1 py-0.5 ${b.on ? "text-stone-800" : "line-through text-stone-300"}`}
+                                                        />
+                                                        <button
+                                                          onClick={() => rewriteBullet(sec.id, en.id, b)}
+                                                          disabled={!!loadingMap[b.id]}
+                                                          title={jd.trim() ? "Rewrite this bullet for the pasted JD" : "Paste a JD in the Tailor panel first"}
+                                                          className="text-[10px] px-1.5 py-0.5 rounded border border-cyan-200 text-cyan-700 hover:bg-cyan-50 disabled:opacity-50"
+                                                        >{loadingMap[b.id] === "rw" ? "…" : "JD"}</button>
+                                                        {b.original && b.original !== b.text && (
+                                                          <button onClick={() => revertBullet(sec.id, en.id, b)} title="Revert to original" className="text-stone-300 hover:text-stone-700 text-xs mt-1">↶</button>
+                                                        )}
+                                                        <button onClick={() => delBullet(sec.id, en.id, b.id)} className="text-stone-300 hover:text-red-500 text-xs mt-1">✕</button>
+                                                      </div>
+                                                    )}
+                                                  </Sortable>
+                                                ))}
+                                              </SortableContext>
+                                            </DndContext>
+                                          </div>
+                                        )}
                                       </div>
+                                    )}
+                                  </Sortable>
+                                );
+                              })}
+                            </SortableContext>
+                          </DndContext>
+                        ) : (
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEndEntries(sec.id)}>
+                            <SortableContext items={sec.entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+                              {sec.entries.map((it) => (
+                                <Sortable key={it.id} id={it.id}>
+                                  {({ dragHandleProps: itHandle }) => (
+                                    <div className="flex items-start gap-2">
+                                      <span className="drag-handle mt-1" {...itHandle}>⋮⋮</span>
+                                      <input type="checkbox" checked={it.on} onChange={() => patchEntry(sec.id, it.id, { on: !it.on })} className="mt-1.5 w-4 h-4 accent-teal-800 shrink-0" />
+                                      <div className="flex-1">
+                                        {sec.id !== "certs" && (
+                                          <input className="bare text-xs font-semibold text-stone-700 mb-0.5 border-b border-stone-100 px-1" placeholder="Label" value={it.label} onChange={(e) => patchEntry(sec.id, it.id, { label: e.target.value })} />
+                                        )}
+                                        <textarea value={it.text} onChange={(e) => patchEntry(sec.id, it.id, { text: e.target.value })} rows={1} className={`bare w-full text-sm leading-snug resize-none border border-transparent hover:border-stone-200 rounded px-1 py-0.5 ${it.on ? "text-stone-800" : "line-through text-stone-300"}`} />
+                                      </div>
+                                      <button onClick={() => delEntry(sec.id, it.id)} className="text-stone-300 hover:text-red-500 text-xs mt-1">✕</button>
                                     </div>
-                                    <div className={`mt-2 space-y-1.5 ${en.on ? "" : "opacity-40"}`}>
-                                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEndBullets(sec.id, en.id)}>
-                                        <SortableContext items={en.bullets.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-                                          {en.bullets.map((b) => (
-                                            <Sortable key={b.id} id={b.id}>
-                                              {({ dragHandleProps: bHandle }) => (
-                                                <div className="flex items-start gap-2">
-                                                  <span className="drag-handle mt-1" {...bHandle}>⋮⋮</span>
-                                                  <input type="checkbox" checked={b.on} onChange={() => patchBullet(sec.id, en.id, b.id, { on: !b.on })} className="mt-1.5 w-4 h-4 accent-teal-800 shrink-0" />
-                                                  <span className="pill mt-0.5 shrink-0" style={{ background: TAG_COLORS[b.tag] || "#888" }}>{b.tag}</span>
-                                                  <textarea
-                                                    value={b.text}
-                                                    onChange={(e) => patchBullet(sec.id, en.id, b.id, { text: e.target.value })}
-                                                    rows={1}
-                                                    className={`bare flex-1 text-sm leading-snug resize-none border border-transparent hover:border-stone-200 rounded px-1 py-0.5 ${b.on ? "text-stone-800" : "line-through text-stone-300"}`}
-                                                  />
-                                                  <button
-                                                    onClick={() => rewriteBullet(sec.id, en.id, b)}
-                                                    disabled={!!loadingMap[b.id]}
-                                                    title={jd.trim() ? "Rewrite this bullet for the pasted JD" : "Paste a JD in the Tailor panel first"}
-                                                    className="text-[10px] px-1.5 py-0.5 rounded border border-cyan-200 text-cyan-700 hover:bg-cyan-50 disabled:opacity-50"
-                                                  >{loadingMap[b.id] === "rw" ? "…" : "JD"}</button>
-                                                  {b.original && b.original !== b.text && (
-                                                    <button onClick={() => revertBullet(sec.id, en.id, b)} title="Revert to original" className="text-stone-300 hover:text-stone-700 text-xs mt-1">↶</button>
-                                                  )}
-                                                  <button onClick={() => delBullet(sec.id, en.id, b.id)} className="text-stone-300 hover:text-red-500 text-xs mt-1">✕</button>
-                                                </div>
-                                              )}
-                                            </Sortable>
-                                          ))}
-                                        </SortableContext>
-                                      </DndContext>
-                                    </div>
-                                  </div>
-                                )}
-                              </Sortable>
-                            ))}
-                          </SortableContext>
-                        </DndContext>
-                      ) : (
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEndEntries(sec.id)}>
-                          <SortableContext items={sec.entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                            {sec.entries.map((it) => (
-                              <Sortable key={it.id} id={it.id}>
-                                {({ dragHandleProps: itHandle }) => (
-                                  <div className="flex items-start gap-2">
-                                    <span className="drag-handle mt-1" {...itHandle}>⋮⋮</span>
-                                    <input type="checkbox" checked={it.on} onChange={() => patchEntry(sec.id, it.id, { on: !it.on })} className="mt-1.5 w-4 h-4 accent-teal-800 shrink-0" />
-                                    <div className="flex-1">
-                                      {sec.id !== "certs" && (
-                                        <input className="bare text-xs font-semibold text-stone-700 mb-0.5 border-b border-stone-100 px-1" placeholder="Label" value={it.label} onChange={(e) => patchEntry(sec.id, it.id, { label: e.target.value })} />
-                                      )}
-                                      <textarea value={it.text} onChange={(e) => patchEntry(sec.id, it.id, { text: e.target.value })} rows={1} className={`bare w-full text-sm leading-snug resize-none border border-transparent hover:border-stone-200 rounded px-1 py-0.5 ${it.on ? "text-stone-800" : "line-through text-stone-300"}`} />
-                                    </div>
-                                    <button onClick={() => delEntry(sec.id, it.id)} className="text-stone-300 hover:text-red-500 text-xs mt-1">✕</button>
-                                  </div>
-                                )}
-                              </Sortable>
-                            ))}
-                          </SortableContext>
-                        </DndContext>
-                      )}
-                      <button onClick={() => addEntry(sec)} className="text-xs text-teal-700 hover:underline mt-1">{sec.addLabel}</button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </Sortable>
-          ))}
+                                  )}
+                                </Sortable>
+                              ))}
+                            </SortableContext>
+                          </DndContext>
+                        )}
+                        <button onClick={() => addEntry(sec)} className="text-xs text-teal-700 hover:underline mt-1">{sec.addLabel}</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Sortable>
+            );
+          })}
         </SortableContext>
       </DndContext>
 
@@ -364,7 +419,7 @@ import { honestyPromptFragment } from "../lib/honesty.js";
       </button>
 
       <div className="text-xs text-stone-400 px-1 pb-6">
-        Tip: drag ⋮⋮ handles to reorder. ✎ renames a section. <b>JD</b> rewrites a single bullet using your current honesty level.
+        Tip: ▾/▸ on an entry hides its bullets. ⇈/⇊ collapse or expand every entry in a section. Section title ▾/▸ hides the whole section.
       </div>
     </div>
   );

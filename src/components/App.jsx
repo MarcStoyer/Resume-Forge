@@ -32,9 +32,10 @@ function readFile(file, as) {
   });
 }
 
-// Tiny localStorage helper for jobUrl
 const loadJobUrl = () => { try { return localStorage.getItem("resumeforge:jobUrl") || ""; } catch (e) { return ""; } };
 const saveJobUrl = (v) => { try { localStorage.setItem("resumeforge:jobUrl", v); } catch (e) {} };
+const loadPaper = () => { try { return localStorage.getItem("resumeforge:paper") || "letter"; } catch (e) { return "letter"; } };
+const savePaper = (v) => { try { localStorage.setItem("resumeforge:paper", v); } catch (e) {} };
 
 export default function App() {
   const [tab, setTab] = useState("resume");
@@ -46,6 +47,7 @@ export default function App() {
   const [jobUrl, setJobUrl] = useState(() => loadJobUrl());
   const [apps, setApps] = useState(() => loadApps());
   const [appSnapshot, setAppSnapshot] = useState(null);
+  const [paper, setPaper] = useState(() => loadPaper()); // 'letter' | 'a4'
 
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
@@ -58,6 +60,7 @@ export default function App() {
   useEffect(() => { saveJD(jd); }, [jd]);
   useEffect(() => { saveJobUrl(jobUrl); }, [jobUrl]);
   useEffect(() => { saveApps(apps); }, [apps]);
+  useEffect(() => { savePaper(paper); }, [paper]);
 
   const template = getTemplate(templateId);
 
@@ -102,7 +105,6 @@ export default function App() {
     }
   }
 
-  // Build a fresh app object from current state. Used by both save buttons.
   function buildAppRecord(status = "saved") {
     const firstLine = (jd || "").split("\n").find((l) => l.trim().length > 0) || "";
     const guessLabel = firstLine.trim().slice(0, 80) || "Untitled";
@@ -156,6 +158,9 @@ export default function App() {
     setJobUrl("");
   }
 
+  // Approx: top bar height + surrounding padding. Panels each get their own scroll region.
+  const panelHeight = "calc(100vh - 100px)";
+
   return (
     <div style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' }} className="w-full min-h-screen bg-stone-100 text-stone-800">
       <div className="no-print sticky top-0 z-20 bg-white border-b border-stone-200 px-5 py-3 flex items-center justify-between gap-4 flex-wrap">
@@ -187,13 +192,20 @@ export default function App() {
           <button onClick={markAppliedNow} disabled={!jd} className="px-3 py-2 rounded-md text-sm border border-sky-300 text-sky-700 hover:bg-sky-50 disabled:opacity-50" title="Save a snapshot of this résumé+cover+JD with status 'Applied'">
             ✓ Applied with this
           </button>
-          <button onClick={saveApplication} disabled={!jd && !resume.profile.text} className="px-3 py-2 rounded-md text-sm border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50" title="Bookmark current state for later (status 'Saved')">
+          <button onClick={saveApplication} disabled={!jd && !resume.profile.text} className="px-3 py-2 rounded-md text-sm border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50" title="Bookmark current state (status 'Saved')">
             ★ Save
           </button>
           <label className="text-xs text-stone-500 flex items-center gap-1.5">
             Template:
             <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} className="border border-stone-300 rounded px-2 py-1.5 text-sm bg-white">
               {TEMPLATES.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+            </select>
+          </label>
+          <label className="text-xs text-stone-500 flex items-center gap-1.5">
+            Paper:
+            <select value={paper} onChange={(e) => setPaper(e.target.value)} className="border border-stone-300 rounded px-2 py-1.5 text-sm bg-white">
+              <option value="letter">US Letter</option>
+              <option value="a4">A4</option>
             </select>
           </label>
           <button onClick={reset} className="px-3 py-2 rounded-md text-sm border border-stone-200 text-stone-500 hover:bg-stone-50">Reset</button>
@@ -208,7 +220,8 @@ export default function App() {
 
       {tab === "resume" && (
         <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 p-5">
-          <div className="no-print">
+          {/* Left — independent scroll */}
+          <div className="no-print overflow-y-auto pr-1" style={{ height: panelHeight }}>
             <Builder
               resume={resume} setResume={setResume}
               honesty={honesty} setHonesty={setHonesty}
@@ -218,11 +231,14 @@ export default function App() {
               openCoverTab={() => setTab("cover")}
             />
           </div>
-          <div>
-            <div className="lg:sticky lg:top-20">
-              <Preview resume={resume} template={template} />
-              <div className="no-print text-center text-xs text-stone-400 mt-2">Live preview — exactly what exports.</div>
-            </div>
+          {/* Right — independent scroll */}
+          <div className="no-print overflow-y-auto pl-1" style={{ height: panelHeight }}>
+            <Preview resume={resume} template={template} paper={paper} />
+            <div className="text-center text-xs text-stone-400 mt-2 pb-4">Live preview — page guides show approximate breaks.</div>
+          </div>
+          {/* Print-only preview at document root so printing renders correctly */}
+          <div className="hidden print:block">
+            <Preview resume={resume} template={template} paper={paper} printMode />
           </div>
         </div>
       )}

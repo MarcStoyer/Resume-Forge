@@ -44,6 +44,8 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
   const [result, setResult] = useState(null);
   const [snapshotBefore, setSnapshotBefore] = useState(null);
   const [fetchingUrl, setFetchingUrl] = useState(false);
+  const [collapsedResult, setCollapsedResult] = useState(false); // NEW — hides picks after Apply
+  const [appliedSummary, setAppliedSummary] = useState(null);    // NEW — small summary line to show once collapsed
 
   async function fetchFromUrl() {
     if (!jobUrl?.trim()) { setErr("Paste a job posting URL first."); return; }
@@ -59,7 +61,6 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
         setErr((data.message || "Couldn't fetch that page.") + " Try pasting the description text instead.");
         return;
       }
-      // Ask Claude to extract just the job-description portion from the noisy page text.
       const system = "You are given the raw text content of a job-posting web page (with nav, footer, and other noise). Extract ONLY the job description — title, responsibilities, qualifications, and about-the-role content. Omit navigation, cookie notices, footers, related jobs, application instructions. Return plain text, no markdown.";
       const cd = await callClaude({ system, messages: [{ role: "user", content: data.text }], max_tokens: 3000 });
       const clean = extractText(cd).trim();
@@ -74,7 +75,7 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
 
   async function analyze() {
     if (!jd.trim()) { setErr("Paste the job description first (or fetch from a URL)."); return; }
-    setErr(""); setLoading(true); setResult(null);
+    setErr(""); setLoading(true); setResult(null); setCollapsedResult(false); setAppliedSummary(null);
     try {
       const flatB = flattenBullets(resume);
       const flatE = flattenEntries(resume);
@@ -200,10 +201,21 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
     if (result.mode === "full" && result.coverLetter && result.coverChecked && setCoverLetter) {
       setCoverLetter(result.coverLetter);
     }
+
+    // Auto-collapse the results panel after applying
+    const removedEntries = (result.entries || []).filter((e) => e.checked && !e.keep).length;
+    setAppliedSummary({
+      bullets: acceptedPicks.length,
+      removedEntries,
+      appliedSummary: result.mode === "full" && result.summaryChecked && !!result.summary,
+      appliedCover: result.mode === "full" && result.coverChecked && !!result.coverLetter,
+      at: Date.now(),
+    });
+    setCollapsedResult(true);
   }
 
   function undo() {
-    if (snapshotBefore) { applyResume(snapshotBefore); setSnapshotBefore(null); }
+    if (snapshotBefore) { applyResume(snapshotBefore); setSnapshotBefore(null); setAppliedSummary(null); }
   }
 
   const checkedCount = result ? result.picks.filter((p) => p.checked).length : 0;
@@ -218,7 +230,6 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
         )}
       </div>
 
-      {/* URL → JD fetch */}
       <div className="mb-2 flex gap-2">
         <input
           value={jobUrl || ""}
@@ -256,7 +267,7 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
         <button onClick={analyze} disabled={loading} className="px-3 py-1.5 rounded-md text-white text-xs font-medium disabled:opacity-50" style={{ background: "#1f4e5f" }}>
           {loading ? (phase || "Working…") : (mode === "full" ? "🚀 Auto-Tailor" : "🎯 Match my bullets")}
         </button>
-        {result && (
+        {result && !collapsedResult && (
           <>
             <button onClick={applyPicks} className="px-3 py-1.5 rounded-md text-xs font-medium border border-teal-300 text-teal-800 hover:bg-teal-50">
               Apply ({checkedCount} bullets{removeCount ? `, ${removeCount} entries removed` : ""}{result.mode === "full" ? " + summary + cover" : ""})
@@ -269,9 +280,38 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
         {err && <span className="text-xs text-red-600">{err}</span>}
       </div>
 
-      {result && (
+      {/* Applied summary — collapsed state */}
+      {result && collapsedResult && appliedSummary && (
+        <div className="mt-3 border-t border-stone-100 pt-3">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-teal-700 flex items-center gap-2">
+              <span className="font-semibold">✓ Applied.</span>
+              <span className="text-stone-600">
+                {appliedSummary.bullets} bullets
+                {appliedSummary.removedEntries > 0 && `, ${appliedSummary.removedEntries} entries removed`}
+                {appliedSummary.appliedSummary && ", summary updated"}
+                {appliedSummary.appliedCover && ", cover letter updated"}
+              </span>
+            </div>
+            <button
+              onClick={() => setCollapsedResult(false)}
+              className="text-[11px] px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50"
+            >
+              Show details ▾
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Expanded results — visible before apply, or after "Show details" */}
+      {result && !collapsedResult && (
         <div className="mt-3 border-t border-stone-100 pt-3 space-y-3">
-          {result.rationale && <div className="text-xs text-stone-600 italic">{result.rationale}</div>}
+          <div className="flex items-center justify-between">
+            {result.rationale && <div className="text-xs text-stone-600 italic">{result.rationale}</div>}
+            {appliedSummary && (
+              <button onClick={() => setCollapsedResult(true)} className="text-[11px] px-2 py-1 rounded border border-stone-200 text-stone-500 hover:bg-stone-50">Hide ▴</button>
+            )}
+          </div>
 
           {result.entries && result.entries.length > 0 && (
             <div>
