@@ -59,6 +59,9 @@ fetching require `vercel dev`.
 
 ## Deploy to Vercel
 
+The production Vercel project is connected to this repository. Pushes to main
+deploy to production automatically; other branches can create preview deployments.
+
 ### 1. Prepare Supabase
 
 1. Create a Supabase project and run both SQL files in order.
