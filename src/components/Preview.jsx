@@ -128,6 +128,8 @@ export default function Preview({ resume, template: t, paper = "letter", printMo
   const c = resume.contact;
   const contactBits = [c.location, c.email, c.phone, c.linkedin, c.github].filter((x) => x && x.trim());
   const byId = (id) => resume.sections.find((s) => s.id === id);
+  const fixedSectionIds = new Set(["exp", "edu", "skills", "certs", "awards", "proj"]);
+  const extraSections = resume.sections.filter((section) => !fixedSectionIds.has(section.id));
   const profileBlock = resume.profile.on && resume.profile.text.trim() ? (
     <p style={{ marginBottom: t.sectionGap, textAlign: "justify", fontSize: t.sizes.body }}>{resume.profile.text}</p>
   ) : null;
@@ -169,6 +171,7 @@ export default function Preview({ resume, template: t, paper = "letter", printMo
             {renderSection(byId("exp"), t)}
             {renderSection(byId("edu"), t)}
             {renderSection(byId("proj"), t)}
+            {extraSections.map((section) => renderSection(section, t))}
           </div>
         </div>
       ) : (

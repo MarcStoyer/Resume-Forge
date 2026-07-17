@@ -22,9 +22,9 @@ export function mapParsed(p) {
   }));
   const mkEntries = (arr) => (Array.isArray(arr) ? arr : []).map((e) => ({
     id: uid(), on: true,
-    org: e.org || e.company || e.school || "",
+    org: e.org || e.company || e.school || e.project || e.name || "",
     loc: e.loc || e.location || "",
-    role: e.role || e.title || e.degree || "",
+    role: e.role || e.title || e.degree || e.technologies || "",
     dates: e.dates || "", sub: e.sub || "",
     bullets: mkBullets(e.bullets),
   }));
@@ -32,6 +32,27 @@ export function mapParsed(p) {
     typeof it === "string"
       ? { id: uid(), on: true, tag: "IMPACT", label: "", text: it }
       : { id: uid(), on: true, tag: "DATA", label: it.label || it.category || "", text: it.text || it.value || "" });
+  const projects = Array.isArray(p?.projects) ? p.projects : [];
+  const projectsAreEntries = projects.some((item) => item && typeof item === "object" && (
+    Array.isArray(item.bullets) || item.dates || item.org || item.project || item.name || item.role || item.technologies
+  ));
+  const sections = [
+    { id: "exp", title: "Experience", kind: "entries", addLabel: "+ Add job", entries: mkEntries(p?.experience), removable: false },
+    { id: "edu", title: "Education", kind: "entries", addLabel: "+ Add school", entries: mkEntries(p?.education), removable: false },
+    { id: "skills", title: "Technical Skills", kind: "list", addLabel: "+ Add skill line", entries: mkList(p?.skills), removable: false },
+    { id: "certs", title: "Certifications", kind: "list", addLabel: "+ Add certification", entries: mkList(p?.certs), removable: false },
+    { id: "awards", title: "Honors & Awards", kind: "list", addLabel: "+ Add award", entries: mkList(p?.awards), removable: false },
+    {
+      id: "proj", title: "Projects & Builds", kind: projectsAreEntries ? "entries" : "list",
+      addLabel: "+ Add project", entries: projectsAreEntries ? mkEntries(projects) : mkList(projects), removable: false,
+    },
+  ];
+  if (Array.isArray(p?.extracurriculars) && p.extracurriculars.length) {
+    sections.push({ id: uid(), title: "Extracurriculars", kind: "entries", addLabel: "+ Add activity", entries: mkEntries(p.extracurriculars), removable: true });
+  }
+  if (Array.isArray(p?.interests) && p.interests.length) {
+    sections.push({ id: uid(), title: "Interests", kind: "list", addLabel: "+ Add interest", entries: mkList(p.interests), removable: true });
+  }
   return {
     contact: {
       name: p?.contact?.name || "[Name]",
@@ -40,13 +61,6 @@ export function mapParsed(p) {
       github: p?.contact?.github || "",
     },
     profile: { on: !!p?.profile, text: p?.profile || "", original: p?.profile || "" },
-    sections: [
-      { id: "exp", title: "Experience", kind: "entries", addLabel: "+ Add job", entries: mkEntries(p?.experience), removable: false },
-      { id: "edu", title: "Education", kind: "entries", addLabel: "+ Add school", entries: mkEntries(p?.education), removable: false },
-      { id: "skills", title: "Technical Skills", kind: "list", addLabel: "+ Add skill line", entries: mkList(p?.skills), removable: false },
-      { id: "certs", title: "Certifications", kind: "list", addLabel: "+ Add certification", entries: mkList(p?.certs), removable: false },
-      { id: "awards", title: "Honors & Awards", kind: "list", addLabel: "+ Add award", entries: mkList(p?.awards), removable: false },
-      { id: "proj", title: "Projects & Builds", kind: "list", addLabel: "+ Add project", entries: mkList(p?.projects), removable: false },
-    ],
+    sections,
   };
 }

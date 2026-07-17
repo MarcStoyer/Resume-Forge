@@ -1,0 +1,350 @@
+{
+  "contact": {
+    "name": "Marc Andrew Stoyer",
+    "location": "San Francisco, CA 94118",
+    "email": "Marc.Stoyer@Columbia.edu",
+    "phone": "210-606-2808",
+    "linkedin": "LinkedIn.com/in/marc-stoyer",
+    "github": "Github.com/MarcStoyer"
+  },
+  "profile": "",
+  "experience": [
+    {
+      "org": "Amplify Endowment Management",
+      "role": "Data & Research Analyst",
+      "loc": "New York, NY",
+      "dates": "Mar 2026 – Present",
+      "bullets": [
+        "Integrated AI tooling into the firm’s research and lead generation workflows, reducing manual prospecting time",
+        "Built Python pipelines to scrape and parse 2.5 million IRS Form 990 filings, identifying and enriching 2,000 high-potential nonprofit prospects with critical financial data, and key figure identification",
+        "Developed RFP monitoring system with keyword scoring",
+        "Provided marketing consultation and worked directly with firm principals on business development strategy"
+      ]
+    },
+    {
+      "org": "Japanese Community Youth Council (JCYC)",
+      "role": "Summer Instructor",
+      "loc": "San Francisco, CA",
+      "dates": "Summer 2025 & 2026",
+      "bullets": [
+        "Taught three 55-minute classes per week across an 8-week intensive summer program, serving 6-25 students per class",
+        "Designed individualized curricula for Calculus, Physics, Chemistry, and Algebra II",
+        "Provided one-on-one instruction to special education students; collaborated with administration to develop diagnostic math assessments for incoming students.",
+        "Received positive evaluations from 85% of students; invited to return for a second Summer",
+        "Served underprivileged youth from SFUSD’s most under-resourced and diverse campuses"
+      ]
+    },
+    {
+      "org": "Independent Tutor",
+      "role": "",
+      "loc": "Multiple Locations",
+      "dates": "June 2019 - Present",
+      "bullets": [
+        "Provided ongoing one-on-one tutoring across STEM subjects and English/reading comprehension to elementary, middle, high school, and college-level students over 5+ years",
+        "Supported test prep for standardized exams including SAT, ACT, and state assessments",
+        "Developed customized lesson plans tailored to individual student needs and learning styles",
+        "Supported college students in introductory and upper-division Physics coursework",
+        "Maintained long-term client relationships with repeat families across Austin, New York, San Francisco, and San Antonio"
+      ]
+    },
+    {
+      "org": "Columbia University Astrophysics Laboratory",
+      "role": "Student Researcher",
+      "loc": "New York, NY",
+      "dates": "May 2025 – Jan 2026",
+      "bullets": [
+        "Conducted preliminary research assessing the accuracy on Baryonic Correction Models (BCM) applied to cosmological simulations",
+        "Wrote Python code to apply BCM to Illustris TNG simulation data; collaborated with doctoral candidate supervisor, Max Lee",
+        "Awarded Columbia’s RISE Scholarship to conduct research over the Summer of 2025",
+        "Selected to present research poster at Columbia’s Undergraduate Research Symposium Fall 2025"
+      ]
+    },
+    {
+      "org": "The Bridge Golf Foundation",
+      "role": "STEM Tutor",
+      "loc": "New York, NY",
+      "dates": "Aug 2024 – Sep 2025",
+      "bullets": [
+        "Delivered in-person and virtual tutoring sessions after school to prepare underserved NYC youth for standardized testing including Regents subject exams and college readiness exams SAT and ACT.",
+        "Provided one-on-one instruction across Physics, Chemistry, Calculus, Algebra I & II, Pre-Calculus, and Geometry.",
+        "Authored daily reports for the program director documenting student attendance, academic progress, and behavior across all tutoring sessions"
+      ]
+    },
+    {
+      "org": "College Connected",
+      "role": "Partner, Lead Mentor",
+      "loc": "Austin, TX",
+      "dates": "Aug 2023 – Jan 2025",
+      "bullets": [
+        "Joined as a founding team member of a collegiate advisory startup; designed year-based program tracks for high school students and community college transfer applicants",
+        "Trained and led a team of ~10 mentors to deliver hands-on college counseling to students and parents",
+        "Worked with 15+ student-parent pairs on a weekly basis to develop and execute individualized college roadmaps",
+        "Built lead generation infrastructure using Instagram ad campaigns, growing the client pipeline from launch"
+      ]
+    },
+    {
+      "org": "Austin Community College District",
+      "role": "Student Technology Advocate",
+      "loc": "Austin, TX",
+      "dates": "Sep 2023 – Jan 2024",
+      "bullets": [
+        "Produced and recorded video tutorials on essential ACC platforms (Blackboard, Panopto, etc.) and their functions accessible to the full student body",
+        "Identified gaps in student digital literacy, pitched solutions to management and delivered solutions via an in-person lecture series."
+      ]
+    },
+    {
+      "org": "Dell Technologies",
+      "role": "AI Marketing Intern",
+      "loc": "Austin, TX",
+      "dates": "Jun 2023 – Aug 2023",
+      "bullets": [
+        "Researched and benchmarked emerging AI writing tools (Claude, ChatGPT, LLaMa) for long-form marketing content production",
+        "Advocated internally for air-gapped, enterprise-hosted AI deployments to protect proprietary data",
+        "Presented findings and recommendations to unit leaders, VPs and executives"
+      ]
+    },
+    {
+      "org": "Google Fiber via Nelson Connects",
+      "role": "Sales Representative",
+      "loc": "Austin, TX",
+      "dates": "Dec 2022 – Jun 2023",
+      "bullets": [
+        "Canvassed ~100 doors per day in Austin’s Summer heat, conducting direct door-to-door residential sales for Google Fiber",
+        "Averaged approximately one new subscriber per day, consistently met or exceeded weekly quota targets",
+        "Developed resilience and strong cold-outreach communication skills in a high-volume, performance-driven environment"
+      ]
+    },
+    {
+      "org": "REI CO-OP",
+      "role": "Retail Sales Associate",
+      "loc": "Austin, TX",
+      "dates": "Oct 2022 – Jan 2023",
+      "bullets": [
+        "Advised customers on outdoor gear selection across climbing, camping, and hiking categories using an extensive personal experience",
+        "Contributed to a collaborative sales floor team; maintained product knowledge and merchandising standards",
+        "Maintained floor cleanliness and product organization; restocked apparel and gear inventory and assisted customers with outfitting"
+      ]
+    },
+    {
+      "org": "Tesla Inc.",
+      "role": "Commercial Solar Installer",
+      "loc": "Austin, TX",
+      "dates": "Dec 2021 – Jul 2022",
+      "bullets": [
+        "Installed commercial-scale solar arrays atop the Austin Gigafactory roof that spell out “TESLA”",
+        "Ran and terminated wiring to code under the supervision of a licensed master electrician",
+        "Operated in physically demanding outdoor conditions, working at height with strict OSHA safety protocols"
+      ]
+    },
+    {
+      "org": "Sonic",
+      "role": "Back of House Crew Member",
+      "loc": "San Antonio, TX",
+      "dates": "Jan 2019 – Aug 2019",
+      "bullets": [
+        "Maintained food prep standards, cleanliness, and efficient service during high-volume shifts",
+        "Handled cash transactions and ensured accurate order fulfillment"
+      ]
+    },
+    {
+      "org": "LifeTime Fitness",
+      "role": "Cafe Staff",
+      "loc": "San Antonio, TX",
+      "dates": "Jan 2018 – Aug 2018",
+      "bullets": [
+        "Prepared food and beverages; managed point-of-sale transactions and maintained health and sanitation standards"
+      ]
+    },
+    {
+      "org": "Brookstone",
+      "role": "Retail Sales Associate",
+      "loc": "San Antonio, TX",
+      "dates": "Sep 2017 – Jan 2018",
+      "bullets": [
+        "Demonstrated and sold specialty consumer electronics and lifestyle products",
+        "Handled cash and card transactions",
+        "Sold big ticket items such as massage chairs"
+      ]
+    },
+    {
+      "org": "Whataburger",
+      "role": "Back of House Crew Member",
+      "loc": "San Antonio, TX",
+      "dates": "Oct 2016 – Aug 2017",
+      "bullets": [
+        "Prepared food orders to standard in a fast-paced kitchen environment",
+        "Upheld food safety and cleanliness protocols",
+        "Operated the kitchen at the busiest Whataburger within San Antonio"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "org": "Columbia University",
+      "role": "Bachelor of Arts in Astrophysics with a Minor in Mathematical Probability",
+      "loc": "New York, NY",
+      "dates": "Jan 2024 – May 2026",
+      "bullets": [
+        "Cumulative GPA: 3.32/4.0; Major GPA: 3.06/4.0",
+        "Dean’s List (Spring 2024, Summer 2024), OSF Scholarship Recipient (2024-2025), STAR Scholar (Summer 2024), Prof Lloyd Mertz Scholarship Recipient (2025-2026)",
+        "Coursework: Linear Algebra, Classical Mechanics, ODEs, E&M, PHYS III: Waves, Intermediate Lab (Vacuum and Radiation Systems), Probability for Engineers, Quantum Physics, Thermal & Statistical Physics, Waves & Optics, OOM Astrophysics"
+      ]
+    },
+    {
+      "org": "Austin Community College",
+      "role": "Associate of Arts in Economics | Associate of Science in Physics",
+      "loc": "Austin, TX",
+      "dates": "Aug 2021 – May 2023",
+      "bullets": [
+        "Cumulative GPA: 3.93/4.0; Major GPA 3.93/4.0",
+        "ACC Honors Scholar, Scholastic Excellence, PTK Honors Society Bronze Member",
+        "Coursework: Honors Computational Physics 1 & 2, Calculus 1-3, Macro and Micro Economics"
+      ]
+    },
+    {
+      "org": "University of Colorado, Denver",
+      "role": "Undergraduate Studies",
+      "loc": "Denver, CO",
+      "dates": "Jan 2020 – May 2020",
+      "bullets": [
+        "Covid “May Semester”"
+      ]
+    },
+    {
+      "org": "University of Colorado, Colorado Springs",
+      "role": "Undergraduate Studies",
+      "loc": "Colorado Springs, CO",
+      "dates": "Aug 2019 – Dec 2020",
+      "bullets": [
+        "Student Government Senator",
+        "Honors Program"
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "label": "Skills",
+      "text": "Intermediate Spanish, Native English"
+    },
+    {
+      "label": "Computer",
+      "text": "Excel, Word, Google Docs, Sheets, Python, ChatGPT, Claude, Linux Terminal"
+    }
+  ],
+  "certs": [
+    "Wilderness First Responder (WFR)",
+    "CPR/First Aid",
+    "OSHA 30",
+    "CDSS Child Abuse & Neglect Mandated Reporter"
+  ],
+  "awards": [
+    "Dean's List, Columbia University (Spring 2024, Summer 2024)",
+    "OSF Scholarship Recipient (2024–2025)",
+    "Prof. Lloyd Mertz Scholarship Recipient (2025–2026)",
+    "STAR Scholar, Columbia University (Summer 2024)",
+    "RISE Scholarship Award Recipient, Columbia University (Summer 2025)",
+    "ACC Honors Scholar",
+    "Scholastic Excellence Award, Austin Community College",
+    "PTK Honors Society Bronze Member",
+    "USA Climbing Collegiate National Championship Qualifier (2026)",
+    "4th Place, USA Climbing Collegiate Northeastern CNQE Men's Top Rope (2026)"
+  ],
+  "projects": [
+    {
+      "org": "Résumé Forge",
+      "role": "React, TypeScript, Vite, Express, Git, Claude API",
+      "dates": "May 2026 - Present",
+      "loc": "",
+      "bullets": [
+        "Built a full-stack application that tailors résumés to job descriptions using LLM-assisted parsing and bullet generation.",
+        "Implemented CV parsing, JD matching, drag-and-drop section reordering, and export to PDF/DOCX.",
+        "Integrated Claude API with user-controlled editing and transparency features to preserve factual accuracy.",
+        "Developed application management tools for tracking and organizing submitted positions."
+      ]
+    },
+    {
+      "org": "Car Repair",
+      "role": "Hand & Power Tools",
+      "dates": "2015 - Present",
+      "loc": "",
+      "bullets": [
+        "2017 Mazda CX-5",
+        "2003 Mercedes Benz S600",
+        "2007 Toyota Corolla",
+        "2012 Hyundai Accent",
+        "1972 Chevrolet Camaro"
+      ]
+    },
+    {
+      "org": "3D Printer Repair & Donation",
+      "role": "Electronics, Soldering, 3D Printing, Philanthropy",
+      "dates": "Jun 2026 - Present",
+      "loc": "",
+      "bullets": [
+        "Repaired 4 Ender 3 V2, 1 FLSUN, and 1 QIDI Max II"
+      ]
+    },
+    {
+      "org": "WiiFit Balance Board Force Plate",
+      "role": "Github, Electronics",
+      "dates": "May 2026 - Present",
+      "loc": "",
+      "bullets": [
+        "Converted a WiiFit Balance Board into a lab-ready fore plate to provide lab equipment for my JCYC STEM courses."
+      ]
+    },
+    {
+      "org": "Process Notebook",
+      "role": "",
+      "dates": "Jan 2026 - Present",
+      "loc": "",
+      "bullets": [
+        "Building a stylus-native learning platform that captures the complete process behind students' handwritten STEM work — stroke order, revisions, scratch pages, pauses, and hint requests — so teachers can review how students reasoned, not only whether they arrived at the right answer.",
+        "Developed a working prototype using [YOUR ACTUAL STACK — e.g., React, TypeScript, Node, PostgreSQL, Fabric.js or whatever you're using for the canvas], including a stylus-input canvas that stores handwriting as point-based stroke objects in document coordinates for resolution-preserving replay, selection, and export.",
+        "[ONE bullet describing a specific technical thing you actually built and can demo — e.g., \"Implemented event-sourced session replay allowing teachers to scrub through a student's full work history at variable speed\" or \"Built PDF-to-workspace conversion pipeline that turns any uploaded worksheet into an editable stylus canvas\"]",
+        "Positioned against incumbents (Classkick, Snorkl, Kami, Gradescope) on a differentiated axis — capturing the full act of doing the work rather than optimizing for real-time intervention, AI feedback on explanations, or post-submission grading.",
+        "Designed six-week paid pilot structure targeting tablet-enabled independent-school STEM departments; developed pricing model, teacher-champion GTM plan, and privacy framework (FERPA, COPPA) for institutional adoption"
+      ]
+    }
+  ],
+  "extracurriculars": [
+    {
+      "org": "Columbia University Rock Climbing Club",
+      "role": "Competitor, Driver",
+      "loc": "New York, NY",
+      "dates": "Jan 2024 – May 2026",
+      "bullets": [
+        "2026 USA Climbing Collegiate National Championship Qualifier",
+        "4th place, 2026 USA Climbing Collegiate Northeastern CNQE — Men’s Top Rope",
+        "Served as the team’s trusted driver for competition travel"
+      ]
+    },
+    {
+      "org": "The Phoenix",
+      "role": "Volunteer",
+      "loc": "Multiple Locations",
+      "dates": "2021 - Present",
+      "bullets": [
+        "Facilitated climbing sessions for community members in recovery, promoting physical wellness and peer connection",
+        "Assisted with event logistics and program delivery for a sober-active community organization"
+      ]
+    },
+    {
+      "org": "Habitat for Humanity ReStore",
+      "role": "Volunteer",
+      "loc": "Austin, TX",
+      "dates": "Jun 2021 – Jan 2024",
+      "bullets": [
+        "Assisted store managers with sales floor operations and customer service",
+        "Received, sorted, and priced donated building materials and household goods",
+        "Provided general labor in support of ReStore operations and inventory management"
+      ]
+    }
+  ],
+  "interests": [
+    "Rock Climbing",
+    "Backpacking",
+    "Robotics & Hardware Systems",
+    "Art History"
+  ]
+}

@@ -4,20 +4,19 @@ import Builder from "./Builder.jsx";
 import Preview from "./Preview.jsx";
 import CoverLetterTab from "./CoverLetterTab.jsx";
 import ApplicationsTab from "./ApplicationsTab.jsx";
+import { useAuth } from "./AuthProvider.jsx";
 
 import {
-  loadResume, saveResume, clearResume,
-  loadTemplate, saveTemplate,
-  loadHonesty, saveHonesty,
-  loadCoverLetter, saveCoverLetter,
-  loadJD, saveJD,
-  loadApps, saveApps,
+  loadUserData,
+  saveResume, saveTemplate, saveHonesty, saveCoverLetter,
+  saveJD, saveJobUrl, savePaper, saveApps,
 } from "../lib/storage.js";
 import { defaultResume } from "../data/defaultResume.js";
 import { TEMPLATES, getTemplate } from "../lib/templates.js";
 import { exportDocx } from "../lib/docxExport.js";
 import { callClaude } from "../lib/api.js";
 import { extractText, extractJSON, mapParsed } from "../lib/parse.js";
+import { CV_EXTRACTION_REQUEST, CV_EXTRACTION_SYSTEM, parseStructuredDocxHtml } from "../lib/cvParse.js";
 import { deepClone, uid } from "../lib/util.js";
 import { historyEntry } from "../lib/funnel.js";
 
@@ -32,35 +31,78 @@ function readFile(file, as) {
   });
 }
 
-const loadJobUrl = () => { try { return localStorage.getItem("resumeforge:jobUrl") || ""; } catch (e) { return ""; } };
-const saveJobUrl = (v) => { try { localStorage.setItem("resumeforge:jobUrl", v); } catch (e) {} };
-const loadPaper = () => { try { return localStorage.getItem("resumeforge:paper") || "letter"; } catch (e) { return "letter"; } };
-const savePaper = (v) => { try { localStorage.setItem("resumeforge:paper", v); } catch (e) {} };
-
 export default function App() {
+  const { user, signOut } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
   const [tab, setTab] = useState("resume");
-  const [resume, setResume] = useState(() => loadResume() || defaultResume());
-  const [templateId, setTemplateId] = useState(() => loadTemplate() || "classic");
-  const [honesty, setHonesty] = useState(() => loadHonesty());
-  const [coverLetter, setCoverLetter] = useState(() => loadCoverLetter());
-  const [jd, setJd] = useState(() => loadJD());
-  const [jobUrl, setJobUrl] = useState(() => loadJobUrl());
-  const [apps, setApps] = useState(() => loadApps());
+  const [resume, setResume] = useState(() => defaultResume());
+  const [templateId, setTemplateId] = useState("classic");
+  const [honesty, setHonesty] = useState(75);
+  const [coverLetter, setCoverLetter] = useState("");
+  const [jd, setJd] = useState("");
+  const [jobUrl, setJobUrl] = useState("");
+  const [apps, setApps] = useState([]);
   const [appSnapshot, setAppSnapshot] = useState(null);
-  const [paper, setPaper] = useState(() => loadPaper()); // 'letter' | 'a4'
+  const [paper, setPaper] = useState("letter"); // letter | a4
+  const [storageReady, setStorageReady] = useState(false);
+  const [storageErr, setStorageErr] = useState("");
 
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
   const fileRef = useRef(null);
 
-  useEffect(() => { saveResume(resume); }, [resume]);
-  useEffect(() => { saveTemplate(templateId); }, [templateId]);
-  useEffect(() => { saveHonesty(honesty); }, [honesty]);
-  useEffect(() => { saveCoverLetter(coverLetter); }, [coverLetter]);
-  useEffect(() => { saveJD(jd); }, [jd]);
-  useEffect(() => { saveJobUrl(jobUrl); }, [jobUrl]);
-  useEffect(() => { saveApps(apps); }, [apps]);
-  useEffect(() => { savePaper(paper); }, [paper]);
+  useEffect(() => {
+    let cancelled = false;
+    async function hydrate() {
+      setStorageReady(false);
+      setStorageErr("");
+      try {
+        const data = await loadUserData(user.id);
+        if (cancelled) return;
+        setResume(data?.resume || defaultResume());
+        setTemplateId(data?.template || "classic");
+        setHonesty(typeof data?.honesty === "number" ? data.honesty : 75);
+        setCoverLetter(typeof data?.cover_letter === "string" ? data.cover_letter : "");
+        setJd(typeof data?.jd === "string" ? data.jd : "");
+        setJobUrl(typeof data?.job_url === "string" ? data.job_url : "");
+        setPaper(data?.paper || "letter");
+        setApps(Array.isArray(data?.applications) ? data.applications : []);
+        setStorageReady(true);
+      } catch (e) {
+        if (!cancelled) setStorageErr(e.message);
+      }
+    }
+    hydrate();
+    return () => { cancelled = true; };
+  }, [user.id]);
+
+  function persist(save, value) {
+    if (!storageReady) return undefined;
+    const timer = setTimeout(() => {
+      save(value, user.id).catch((e) => setStorageErr(e.message));
+    }, 350);
+    return () => clearTimeout(timer);
+  }
+
+  useEffect(() => persist(saveResume, resume), [resume, storageReady, user.id]);
+  useEffect(() => persist(saveTemplate, templateId), [templateId, storageReady, user.id]);
+  useEffect(() => persist(saveHonesty, honesty), [honesty, storageReady, user.id]);
+  useEffect(() => persist(saveCoverLetter, coverLetter), [coverLetter, storageReady, user.id]);
+  useEffect(() => persist(saveJD, jd), [jd, storageReady, user.id]);
+  useEffect(() => persist(saveJobUrl, jobUrl), [jobUrl, storageReady, user.id]);
+  useEffect(() => persist(saveApps, apps), [apps, storageReady, user.id]);
+  useEffect(() => persist(savePaper, paper), [paper, storageReady, user.id]);
+
+  async function logout() {
+    setSigningOut(true);
+    setStorageErr("");
+    try {
+      await signOut();
+    } catch (e) {
+      setStorageErr(e.message);
+      setSigningOut(false);
+    }
+  }
 
   const template = getTemplate(templateId);
 
@@ -69,34 +111,40 @@ export default function App() {
     if (!file) return;
     setUploading(true); setUploadErr("");
     try {
-      const system = 'Extract this résumé into JSON with this exact schema: {"contact":{"name":"","location":"","email":"","phone":"","linkedin":"","github":""},"profile":"","experience":[{"org":"","role":"","dates":"","loc":"","bullets":[]}],"education":[{"org":"","role":"","dates":"","loc":"","bullets":[]}],"skills":[{"label":"","text":""}],"certs":[],"awards":[],"projects":[{"label":"","text":""}]}. Include EVERY job and EVERY bullet from the source. Do not truncate. Return ONLY the JSON, no markdown, no commentary.';
+      const system = CV_EXTRACTION_SYSTEM;
       const name = file.name.toLowerCase();
       let content;
+      let parsed = null;
       if (name.endsWith(".pdf")) {
         const b64 = (await readFile(file, "dataURL")).split(",")[1];
         content = [
           { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } },
-          { type: "text", text: "Extract this résumé to JSON per the schema. Include every job and every bullet." },
+          { type: "text", text: CV_EXTRACTION_REQUEST },
         ];
       } else if (name.endsWith(".docx")) {
         const buf = await readFile(file, "arrayBuffer");
-        const out = await mammoth.extractRawText({ arrayBuffer: buf });
-        content = "Extract this résumé to JSON per the schema. Include every job and every bullet:\n\n" + out.value;
+        const out = await mammoth.convertToHtml({ arrayBuffer: buf });
+        parsed = parseStructuredDocxHtml(out.value);
+        if (!parsed) {
+          content = CV_EXTRACTION_REQUEST + "\n\nThe source below is semantic HTML converted from DOCX. Preserve table-row relationships:\n\n" + out.value;
+        }
       } else if (/\.(png|jpe?g|webp|gif)$/.test(name)) {
         const b64 = (await readFile(file, "dataURL")).split(",")[1];
         const mt = "image/" + (name.endsWith(".png") ? "png" : name.endsWith(".webp") ? "webp" : name.endsWith(".gif") ? "gif" : "jpeg");
         content = [
           { type: "image", source: { type: "base64", media_type: mt, data: b64 } },
-          { type: "text", text: "Extract this résumé to JSON per the schema. Include every job and every bullet." },
+          { type: "text", text: CV_EXTRACTION_REQUEST },
         ];
       } else {
         const text = await readFile(file, "text");
-        content = "Extract this résumé to JSON per the schema. Include every job and every bullet:\n\n" + text;
+        content = CV_EXTRACTION_REQUEST + "\n\n" + text;
       }
-      const data = await callClaude({ system, messages: [{ role: "user", content }], max_tokens: 8000 });
-      const parsed = extractJSON(extractText(data));
+      if (!parsed) {
+        const data = await callClaude({ system, messages: [{ role: "user", content }], max_tokens: 8000 });
+        parsed = extractJSON(extractText(data));
+      }
       if (parsed) setResume(mapParsed(parsed));
-      else setUploadErr("Couldn't parse that file. Try a .docx or .txt version.");
+      else setUploadErr("Couldn't parse that file. Try a DOCX or text-based PDF.");
     } catch (e) {
       setUploadErr("Upload failed: " + e.message);
     } finally {
@@ -151,7 +199,6 @@ export default function App() {
 
   function reset() {
     if (!confirm("Reset to defaults? Clears your current résumé, cover letter, and pasted JD. (Saved Applications are kept.)")) return;
-    clearResume();
     setResume(defaultResume());
     setCoverLetter("");
     setJd("");
@@ -160,6 +207,24 @@ export default function App() {
 
   // Approx: top bar height + surrounding padding. Panels each get their own scroll region.
   const panelHeight = "calc(100vh - 100px)";
+
+  if (!storageReady) {
+    return (
+      <div className="w-full min-h-screen bg-stone-100 text-stone-800 flex items-center justify-center p-6">
+        <div className="max-w-lg rounded-lg border border-stone-200 bg-white p-6 text-center shadow-sm">
+          {storageErr ? (
+            <>
+              <div className="font-semibold text-red-700">Could not load your saved data</div>
+              <div className="mt-2 text-sm text-stone-600">{storageErr}</div>
+              <div className="mt-3 text-xs text-stone-500">Check your Supabase table and Vite environment variables, then reload.</div>
+            </>
+          ) : (
+            <div className="text-sm text-stone-600">Loading your résumé data…</div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' }} className="w-full min-h-screen bg-stone-100 text-stone-800">
@@ -181,6 +246,11 @@ export default function App() {
           {uploadErr && (
             <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
               {uploadErr} <button onClick={() => setUploadErr("")} className="underline ml-1">dismiss</button>
+            </div>
+          )}
+          {storageErr && (
+            <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+              Save failed: {storageErr} <button onClick={() => setStorageErr("")} className="underline ml-1">dismiss</button>
             </div>
           )}
         </div>
@@ -208,7 +278,9 @@ export default function App() {
               <option value="a4">A4</option>
             </select>
           </label>
+          <span className="max-w-44 truncate text-xs text-stone-400" title={user.email}>{user.email}</span>
           <button onClick={reset} className="px-3 py-2 rounded-md text-sm border border-stone-200 text-stone-500 hover:bg-stone-50">Reset</button>
+          <button onClick={logout} disabled={signingOut} className="px-3 py-2 rounded-md text-sm border border-stone-300 text-stone-600 hover:bg-stone-50 disabled:opacity-50">{signingOut ? "Signing out…" : "Log out"}</button>
           {tab === "resume" && (
             <>
               <button onClick={() => exportDocx(resume, template)} className="px-3 py-2 rounded-md text-sm font-medium border border-stone-300 hover:bg-stone-50">⬇ DOCX</button>
