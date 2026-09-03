@@ -1,8 +1,11 @@
 export const TEMPLATES = [
+  // The default template, tuned to match "Marc Stoyer Master CV.docx": left-aligned
+  // header with the location right-aligned, black rather than a colored accent, and
+  // larger all-caps section titles over a hairline rule.
   { id: "classic", name: "Classic (serif)", layout: "single",
     fontFamily: 'Georgia, "Times New Roman", serif',
-    headerAlign: "center", titleStyle: "underline", accent: "#1f4e5f",
-    sizes: { name: 26, contact: 11, title: 12, body: 13, sub: 11 }, sectionGap: 12 },
+    headerAlign: "left", titleStyle: "underline", accent: "#111", headerRule: 1,
+    sizes: { name: 26, contact: 11, title: 14, body: 13, sub: 11 }, sectionGap: 12 },
   { id: "modern", name: "Modern (sans)", layout: "single",
     fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     headerAlign: "left", titleStyle: "bar", accent: "#0f766e",

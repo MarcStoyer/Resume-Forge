@@ -43,13 +43,24 @@ export async function exportDocx(resume, template) {
   const accent = template.accent;
   const children = [];
   children.push(new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { after: 40 },
+    spacing: { after: 40 },
     children: [new TextRun({ text: c.name, bold: true, size: 40, font: FONT })],
   }));
-  const bits = [c.location, c.email, c.phone, c.linkedin, c.github].filter((x) => x && x.trim()).join("  •  ");
-  if (bits) children.push(new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { after: 120 },
-    children: [new TextRun({ text: bits, size: 20, color: "555555", font: FONT })],
+  // Mirrors the Preview header: phone/email on the left with the location tabbed
+  // to the right margin, then the web links on their own line underneath.
+  const line1 = [c.phone, c.email].filter((x) => x && x.trim()).join("  |  ");
+  const line2 = [c.github, c.linkedin].filter((x) => x && x.trim()).join("  |  ");
+  if (line1 || c.location) children.push(new Paragraph({
+    spacing: { after: line2 ? 0 : 120 },
+    tabStops: [{ type: "right", position: 9360 }],
+    children: [
+      new TextRun({ text: line1, size: 20, color: "555555", font: FONT }),
+      new TextRun({ text: "\t" + (c.location || ""), size: 20, color: "555555", font: FONT }),
+    ],
+  }));
+  if (line2) children.push(new Paragraph({
+    spacing: { after: 120 },
+    children: [new TextRun({ text: line2, size: 20, color: "555555", font: FONT })],
   }));
   if (resume.profile.on && resume.profile.text.trim()) {
     children.push(new Paragraph({
