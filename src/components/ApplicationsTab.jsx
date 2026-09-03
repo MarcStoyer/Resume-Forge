@@ -107,7 +107,7 @@ export default function ApplicationsTab({
   apps, setApps, currentResume, currentCoverLetter, currentJd,
   currentSnapshot, setCurrentSnapshot, loadApplication,
   interviewPrepAuto, setInterviewPrepAuto, interviewHonesty, setInterviewHonesty,
-  interviewPrepSettings, setInterviewPrepSettings, runInterviewPrep,
+  interviewPrepSettings, setInterviewPrepSettings, runInterviewPrep, cancelInterviewPrep,
 }) {
   const fileRef = useRef(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -241,7 +241,7 @@ export default function ApplicationsTab({
           apps={safeApps} setStatus={setStatus} updateApp={updateApp}
           load={load} confirmDeleteId={confirmDeleteId} setConfirmDeleteId={setConfirmDeleteId}
           deleteApp={deleteApp} expandedId={expandedId} setExpandedId={setExpandedId}
-          runInterviewPrep={runInterviewPrep}
+          runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep}
         />
       )}
     </div>
@@ -253,7 +253,7 @@ function StatusBadge({ status }) {
   return <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide text-white" style={{ background: s.color }}>{s.label}</span>;
 }
 
-function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfirmDeleteId, deleteApp, expandedId, setExpandedId, runInterviewPrep }) {
+function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfirmDeleteId, deleteApp, expandedId, setExpandedId, runInterviewPrep, cancelInterviewPrep }) {
   return (
     <div className="space-y-2">
       {apps.slice().sort((a, b) => b.savedAt - a.savedAt).map((app) => {
@@ -321,7 +321,7 @@ function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfir
                     <pre className="text-xs text-stone-600 whitespace-pre-wrap mt-1 max-h-60 overflow-y-auto bg-stone-50 p-2 rounded">{app.jd}</pre>
                   </details>
                 )}
-                <InterviewPrepSection app={app} runInterviewPrep={runInterviewPrep} />
+                <InterviewPrepSection app={app} runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep} />
               </div>
             )}
           </div>
@@ -331,7 +331,7 @@ function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfir
   );
 }
 
-function InterviewPrepSection({ app, runInterviewPrep }) {
+function InterviewPrepSection({ app, runInterviewPrep, cancelInterviewPrep }) {
   const prep = app.interviewPrep;
   const status = prep?.status;
 
@@ -340,6 +340,9 @@ function InterviewPrepSection({ app, runInterviewPrep }) {
   }
   function regenerate() {
     if (confirm("Regenerate interview prep? This makes another AI request.")) runInterviewPrep(app);
+  }
+  function cancel() {
+    cancelInterviewPrep(app);
   }
 
   return (
@@ -357,14 +360,16 @@ function InterviewPrepSection({ app, runInterviewPrep }) {
         </button>
       )}
       {status === "pending" && (
-        <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1.5 inline-flex items-center gap-1.5">
-          <span className="animate-pulse">●</span> Generating interview prep…
+        <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1.5 flex items-center gap-2 flex-wrap">
+          <span className="animate-pulse">●</span> Generating interview prep… usually under 2 minutes.
+          <button onClick={cancel} className="underline">Cancel</button>
         </div>
       )}
       {status === "error" && (
         <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 flex items-center gap-2 flex-wrap">
           <span>Failed: {prep.error}</span>
           <button onClick={generate} className="underline">Retry</button>
+          {prep.previous && <button onClick={cancel} className="underline">Restore previous</button>}
         </div>
       )}
       {status === "done" && (

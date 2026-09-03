@@ -208,7 +208,10 @@ export default function App() {
   // status-change trigger in ApplicationsTab, and the manual
   // "Generate"/"Regenerate" button.
   async function runInterviewPrep(app) {
-    patchApp(app.id, { interviewPrep: { status: "pending" } });
+    // Keep whatever prep already existed so a stuck/failed regenerate can be
+    // canceled back to it instead of losing a previously-generated result.
+    const previous = app.interviewPrep && app.interviewPrep.status !== "pending" ? app.interviewPrep : null;
+    patchApp(app.id, { interviewPrep: { status: "pending", startedAt: Date.now(), previous } });
     try {
       const questions = await generateInterviewPrep({
         jd: app.jd, company: app.company, role: app.role,
@@ -217,8 +220,15 @@ export default function App() {
       });
       patchApp(app.id, { interviewPrep: { status: "done", generatedAt: Date.now(), questions } });
     } catch (e) {
-      patchApp(app.id, { interviewPrep: { status: "error", error: e.message } });
+      patchApp(app.id, { interviewPrep: { status: "error", error: e.message, previous } });
     }
+  }
+  // Escape hatch for a stuck "pending" state (a hung request, or one orphaned
+  // by a page refresh/navigation mid-generation, which otherwise has no way
+  // back through the UI) and for backing out of a failed regenerate. Restores
+  // whatever prep existed before this run, or clears it if there wasn't one.
+  function cancelInterviewPrep(app) {
+    patchApp(app.id, { interviewPrep: app.interviewPrep?.previous || null });
   }
 
   function loadApplication(app) {
@@ -368,7 +378,7 @@ export default function App() {
           interviewPrepAuto={interviewPrepAuto} setInterviewPrepAuto={setInterviewPrepAuto}
           interviewHonesty={interviewHonesty} setInterviewHonesty={setInterviewHonesty}
           interviewPrepSettings={interviewPrepSettings} setInterviewPrepSettings={setInterviewPrepSettings}
-          runInterviewPrep={runInterviewPrep}
+          runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep}
         />
       )}
     </div>
