@@ -109,6 +109,7 @@ export default function ApplicationsTab({
   currentSnapshot, setCurrentSnapshot, loadApplication,
   interviewPrepAuto, setInterviewPrepAuto, interviewHonesty, setInterviewHonesty,
   interviewPrepSettings, setInterviewPrepSettings, runInterviewPrep, cancelInterviewPrep,
+  attachResumeToApp, willUseApi,
 }) {
   const fileRef = useRef(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -246,6 +247,7 @@ export default function ApplicationsTab({
           deleteApp={deleteApp} expandedId={expandedId} setExpandedId={setExpandedId}
           runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep}
           currentCoverLetter={currentCoverLetter}
+          attachResumeToApp={attachResumeToApp} willUseApi={willUseApi}
         />
       )}
 
@@ -264,7 +266,7 @@ function StatusBadge({ status }) {
   return <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide text-white" style={{ background: s.color }}>{s.label}</span>;
 }
 
-function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfirmDeleteId, deleteApp, expandedId, setExpandedId, runInterviewPrep, cancelInterviewPrep, currentCoverLetter }) {
+function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfirmDeleteId, deleteApp, expandedId, setExpandedId, runInterviewPrep, cancelInterviewPrep, currentCoverLetter, attachResumeToApp, willUseApi }) {
   return (
     <div className="space-y-2">
       {apps.slice().sort((a, b) => b.savedAt - a.savedAt).map((app) => {
@@ -330,13 +332,7 @@ function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfir
                   />
                 </div>
                 <ApplicationCoverLetter app={app} updateApp={updateApp} currentCoverLetter={currentCoverLetter} />
-                {app.resumeUrl && (
-                  <div>
-                    <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">Résumé link</div>
-                    <a href={app.resumeUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline break-all">{app.resumeUrl}</a>
-                    {!app.resume && <div className="text-[10px] text-amber-700 mt-0.5">No résumé attached to this application yet.</div>}
-                  </div>
-                )}
+                <ApplicationResume app={app} attachResumeToApp={attachResumeToApp} willUseApi={willUseApi} />
                 {app.jd && (
                   <details>
                     <summary className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide cursor-pointer">Job description</summary>
@@ -450,6 +446,78 @@ function InterviewPrepSection({ app, runInterviewPrep, cancelInterviewPrep }) {
 // because the copy that actually went out is often tweaked by hand after
 // generation — and interview prep cites this text as evidence, so it should
 // reflect what the interviewer actually read.
+// The résumé as submitted for this application. Bulk-imported rows arrive with
+// only a link — and Drive/Dropbox links can't be fetched server-side — so this
+// is where the actual document gets attached. The file runs through the same
+// extraction pipeline as the main CV upload and is stored structured, which
+// means no binary blobs in the applications column and the result is usable as
+// interview-prep evidence.
+function ApplicationResume({ app, attachResumeToApp, willUseApi }) {
+  const inputRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const attached = !!app.resume;
+
+  async function onPick(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file || !attachResumeToApp) return;
+    setErr("");
+    try {
+      if (willUseApi && (await willUseApi(file))) {
+        const ok = confirm(
+          `"${file.name}" can't be read locally, so parsing it costs one AI request.\n\n` +
+          "A DOCX saved from Word or Google Docs is usually free to parse. Continue?"
+        );
+        if (!ok) return;
+      }
+      setBusy(true);
+      await attachResumeToApp(app.id, file);
+    } catch (e2) {
+      setErr(e2.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!attached && !app.resumeUrl) return null;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
+        <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Résumé submitted</div>
+        <div className="flex gap-1">
+          <input
+            ref={inputRef} type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+            onChange={onPick} className="hidden"
+          />
+          <button
+            onClick={() => inputRef.current?.click()} disabled={busy}
+            className="text-[10px] px-2 py-0.5 rounded border border-teal-300 text-teal-800 hover:bg-teal-50 disabled:opacity-50"
+          >
+            {busy ? "Parsing…" : attached ? "Replace file" : "Upload file"}
+          </button>
+        </div>
+      </div>
+
+      {app.resumeUrl && (
+        <a href={app.resumeUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline break-all">{app.resumeUrl}</a>
+      )}
+
+      {attached ? (
+        <div className="text-[11px] text-teal-800 mt-0.5">
+          ✓ Résumé attached — {(app.resume.sections || []).reduce((n, sec) => n + (sec.entries || []).length, 0)} entries, usable as interview-prep evidence.
+        </div>
+      ) : (
+        <div className="text-[10px] text-amber-700 mt-0.5">
+          No résumé attached yet{app.resumeUrl ? " — open the link above and upload the file here." : "."}
+        </div>
+      )}
+      {err && <div className="text-[10px] text-red-700 mt-0.5">{err}</div>}
+    </div>
+  );
+}
+
 function ApplicationCoverLetter({ app, updateApp, currentCoverLetter }) {
   const [open, setOpen] = useState(false);
   const attached = !!(app.coverLetter || "").trim();
