@@ -245,6 +245,7 @@ export default function ApplicationsTab({
           load={load} confirmDeleteId={confirmDeleteId} setConfirmDeleteId={setConfirmDeleteId}
           deleteApp={deleteApp} expandedId={expandedId} setExpandedId={setExpandedId}
           runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep}
+          currentCoverLetter={currentCoverLetter}
         />
       )}
 
@@ -263,7 +264,7 @@ function StatusBadge({ status }) {
   return <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide text-white" style={{ background: s.color }}>{s.label}</span>;
 }
 
-function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfirmDeleteId, deleteApp, expandedId, setExpandedId, runInterviewPrep, cancelInterviewPrep }) {
+function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfirmDeleteId, deleteApp, expandedId, setExpandedId, runInterviewPrep, cancelInterviewPrep, currentCoverLetter }) {
   return (
     <div className="space-y-2">
       {apps.slice().sort((a, b) => b.savedAt - a.savedAt).map((app) => {
@@ -328,6 +329,7 @@ function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfir
                     className="w-full text-xs border border-stone-200 rounded p-1.5 outline-none focus:border-stone-400"
                   />
                 </div>
+                <ApplicationCoverLetter app={app} updateApp={updateApp} currentCoverLetter={currentCoverLetter} />
                 {app.resumeUrl && (
                   <div>
                     <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">Résumé link</div>
@@ -439,6 +441,64 @@ function InterviewPrepSection({ app, runInterviewPrep, cancelInterviewPrep }) {
           ))}
           <div className="text-[10px] text-stone-400">Generated {fmtDate(prep.generatedAt)}.</div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// The cover letter as submitted for this application. Editable in place,
+// because the copy that actually went out is often tweaked by hand after
+// generation — and interview prep cites this text as evidence, so it should
+// reflect what the interviewer actually read.
+function ApplicationCoverLetter({ app, updateApp, currentCoverLetter }) {
+  const [open, setOpen] = useState(false);
+  const attached = !!(app.coverLetter || "").trim();
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
+        <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">
+          Cover letter {attached ? "" : <span className="font-normal normal-case text-stone-400">— none attached</span>}
+        </div>
+        <div className="flex gap-1">
+          {attached && (
+            <button onClick={() => setOpen((o) => !o)} className="text-[10px] px-2 py-0.5 rounded border border-stone-200 text-stone-500 hover:bg-stone-50">
+              {open ? "Hide" : "Edit"}
+            </button>
+          )}
+          {!attached && (currentCoverLetter || "").trim() && (
+            <button
+              onClick={() => { updateApp(app.id, { coverLetter: currentCoverLetter }); setOpen(true); }}
+              className="text-[10px] px-2 py-0.5 rounded border border-teal-300 text-teal-800 hover:bg-teal-50"
+            >
+              Attach current
+            </button>
+          )}
+          {attached && (
+            <button
+              onClick={() => { if (confirm("Remove the cover letter from this application?")) { updateApp(app.id, { coverLetter: "" }); setOpen(false); } }}
+              className="text-[10px] px-2 py-0.5 rounded text-stone-400 hover:text-red-600"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+      {attached && !open && (
+        <div className="text-xs text-stone-500 line-clamp-2">{app.coverLetter.slice(0, 220)}{app.coverLetter.length > 220 ? "…" : ""}</div>
+      )}
+      {attached && open && (
+        <>
+          <textarea
+            value={app.coverLetter}
+            onChange={(e) => updateApp(app.id, { coverLetter: e.target.value })}
+            rows={10}
+            className="w-full text-xs border border-stone-200 rounded p-2 outline-none focus:border-stone-400 leading-relaxed"
+          />
+          <div className="text-[10px] text-stone-400">
+            Edits are saved to this application only — the cover letter on the Cover Letter tab is untouched.
+          </div>
+        </>
       )}
     </div>
   );

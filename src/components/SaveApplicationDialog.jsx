@@ -6,14 +6,15 @@ import { APPLICATION_SOURCES } from "../lib/jobLabel.js";
 // auto-composes from Company + Role as you type, so accepting the default
 // no longer means keeping whatever junk happened to be line 1 of the JD.
 export default function SaveApplicationDialog({
-  status, defaultLabel = "", defaultCompany = "", hasCoverLetter = false, onCancel, onSave,
+  status, defaultLabel = "", defaultCompany = "", hasCoverLetter = false,
+  defaultAttachCoverLetter = true, onCancel, onSave,
 }) {
   const [company, setCompany] = useState(defaultCompany);
   const [role, setRole] = useState("");
   const [label, setLabel] = useState(defaultLabel);
   const [labelEdited, setLabelEdited] = useState(false);
   const [source, setSource] = useState("");
-  const [attachCoverLetter, setAttachCoverLetter] = useState(hasCoverLetter);
+  const [attachCoverLetter, setAttachCoverLetter] = useState(hasCoverLetter && defaultAttachCoverLetter);
   const firstFieldRef = useRef(null);
 
   useEffect(() => { firstFieldRef.current?.focus(); }, []);

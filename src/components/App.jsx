@@ -54,6 +54,10 @@ export default function App() {
   const [storageReady, setStorageReady] = useState(false);
   const [storageErr, setStorageErr] = useState("");
 
+  // Whether the current cover letter rides along when an application is saved.
+  // Session-level on purpose: it is a per-application decision, mirrored between
+  // the cover letter page and the save dialog rather than a stored preference.
+  const [attachCoverLetter, setAttachCoverLetter] = useState(true);
   const [saveDialog, setSaveDialog] = useState(null); // { status } while the save dialog is open
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
@@ -367,6 +371,8 @@ export default function App() {
           honesty={honesty}
           coverLetter={coverLetter}
           setCoverLetter={setCoverLetter}
+          attachCoverLetter={attachCoverLetter}
+          setAttachCoverLetter={setAttachCoverLetter}
         />
       )}
 
@@ -389,6 +395,7 @@ export default function App() {
           defaultLabel={guessJobLabel(jd)}
           defaultCompany={guessCompany(jd)}
           hasCoverLetter={!!coverLetter.trim()}
+          defaultAttachCoverLetter={attachCoverLetter}
           onCancel={() => setSaveDialog(null)}
           onSave={commitSaveDialog}
         />
