@@ -21,19 +21,19 @@ function jobHeader(en) {
     spacing: { before: 120, after: 20 },
     tabStops: [{ type: "right", position: 9360 }],
     children: [
-      new TextRun({ text: en.org, bold: true, size: 22, font: FONT }),
-      new TextRun({ text: "\t" + (en.dates || ""), italics: true, size: 21, font: FONT, color: "555555" }),
+      new TextRun({ text: en.org, size: 22, font: FONT }),
+      new TextRun({ text: "\t" + (en.loc || ""), bold: true, size: 21, font: FONT, color: "555555" }),
     ],
   });
 }
 function jobSub(en) {
-  if (!en.role && !en.loc) return null;
+  if (!en.role && !en.dates) return null;
   return new Paragraph({
     spacing: { after: 40 },
     tabStops: [{ type: "right", position: 9360 }],
     children: [
       new TextRun({ text: en.role || "", italics: true, size: 21, font: FONT, color: "333333" }),
-      new TextRun({ text: "\t" + (en.loc || ""), size: 21, font: FONT, color: "555555" }),
+      new TextRun({ text: "\t" + (en.dates || ""), italics: true, size: 21, font: FONT, color: "555555" }),
     ],
   });
 }
