@@ -24,7 +24,7 @@ function buildResumeSummary(resume) {
   return lines.join("\n");
 }
 
-export default function CoverLetterTab({ resume, jd, setJd, honesty, coverLetter, setCoverLetter }) {
+export default function CoverLetterTab({ resume, jd, setJd, honesty, coverLetter, setCoverLetter, attachCoverLetter, setAttachCoverLetter }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
@@ -79,6 +79,17 @@ export default function CoverLetterTab({ resume, jd, setJd, honesty, coverLetter
           )}
           {err && <span className="text-xs text-red-600">{err}</span>}
         </div>
+        {coverLetter && (
+          <label className="flex items-center gap-2 mt-2 text-[11px] text-stone-600 cursor-pointer">
+            <input
+              type="checkbox" checked={!!attachCoverLetter}
+              onChange={(e) => setAttachCoverLetter(e.target.checked)}
+              className="w-3.5 h-3.5 accent-teal-800"
+            />
+            Attach this cover letter when saving an application
+            <span className="text-stone-400">— it also feeds interview prep for that application.</span>
+          </label>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border border-stone-200 p-6 print-area">
