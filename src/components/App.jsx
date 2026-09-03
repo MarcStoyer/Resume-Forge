@@ -4,6 +4,8 @@ import Builder from "./Builder.jsx";
 import Preview from "./Preview.jsx";
 import CoverLetterTab from "./CoverLetterTab.jsx";
 import ApplicationsTab from "./ApplicationsTab.jsx";
+import SaveApplicationDialog from "./SaveApplicationDialog.jsx";
+import { guessJobLabel, guessCompany } from "../lib/jobLabel.js";
 import { useAuth } from "./AuthProvider.jsx";
 
 import {
@@ -52,6 +54,7 @@ export default function App() {
   const [storageReady, setStorageReady] = useState(false);
   const [storageErr, setStorageErr] = useState("");
 
+  const [saveDialog, setSaveDialog] = useState(null); // { status } while the save dialog is open
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
   const fileRef = useRef(null);
@@ -164,20 +167,20 @@ export default function App() {
     }
   }
 
-  function buildAppRecord(status = "saved") {
-    const firstLine = (jd || "").split("\n").find((l) => l.trim().length > 0) || "";
-    const guessLabel = firstLine.trim().slice(0, 80) || "Untitled";
-    const label = prompt("Label?", guessLabel) || guessLabel;
-    if (!label) return null;
-    const company = prompt("Company name? (optional)", "") || "";
-    const role = prompt("Role title? (optional)", "") || "";
+  // Builds the record from the values the save dialog collected. The label no
+  // longer falls back to "first non-empty line of the JD" — that's what put
+  // scraped logo alt-text ("Company logo for, Kovari.") into the list.
+  function buildAppRecord(status, fields) {
     return {
       id: uid(),
-      label, company, role,
+      label: fields.label,
+      company: fields.company,
+      role: fields.role,
+      source: fields.source,
       savedAt: Date.now(),
       jd, jobUrl,
       resume: deepClone(resume),
-      coverLetter,
+      coverLetter: fields.attachCoverLetter ? coverLetter : "",
       templateId,
       honesty,
       status,
@@ -185,19 +188,17 @@ export default function App() {
       notes: "",
     };
   }
-  function saveApplication() {
-    const rec = buildAppRecord("saved");
-    if (!rec) return;
+  function saveApplication() { setSaveDialog({ status: "saved" }); }
+  function markAppliedNow() { setSaveDialog({ status: "applied" }); }
+
+  function commitSaveDialog(fields) {
+    const status = saveDialog?.status || "saved";
+    const rec = buildAppRecord(status, fields);
     setApps((a) => [...a, rec]);
+    setSaveDialog(null);
     if (interviewPrepAuto && interviewPrepSettings.trigger === "applied") runInterviewPrep(rec);
-    alert("Saved! Find it in the Applications tab.");
-  }
-  function markAppliedNow() {
-    const rec = buildAppRecord("applied");
-    if (!rec) return;
-    setApps((a) => [...a, rec]);
-    if (interviewPrepAuto && interviewPrepSettings.trigger === "applied") runInterviewPrep(rec);
-    setTab("apps");
+    if (status === "applied") setTab("apps");
+    else alert("Saved! Find it in the Applications tab.");
   }
 
   function patchApp(id, patch) {
@@ -379,6 +380,17 @@ export default function App() {
           interviewHonesty={interviewHonesty} setInterviewHonesty={setInterviewHonesty}
           interviewPrepSettings={interviewPrepSettings} setInterviewPrepSettings={setInterviewPrepSettings}
           runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep}
+        />
+      )}
+
+      {saveDialog && (
+        <SaveApplicationDialog
+          status={saveDialog.status}
+          defaultLabel={guessJobLabel(jd)}
+          defaultCompany={guessCompany(jd)}
+          hasCoverLetter={!!coverLetter.trim()}
+          onCancel={() => setSaveDialog(null)}
+          onSave={commitSaveDialog}
         />
       )}
     </div>

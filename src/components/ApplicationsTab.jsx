@@ -268,7 +268,10 @@ function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfir
                   {app.company && <div className="text-xs text-stone-500">@ {app.company}</div>}
                   {app.role && <div className="text-xs text-stone-500">— {app.role}</div>}
                 </div>
-                <div className="text-[11px] text-stone-400 mt-0.5">Saved {fmtDate(app.savedAt)}</div>
+                <div className="text-[11px] text-stone-400 mt-0.5">
+                  Saved {fmtDate(app.savedAt)}
+                  {app.source && <span> · via {app.source}</span>}
+                </div>
                 {app.jobUrl && <div className="text-[11px] text-blue-700 underline truncate"><a href={app.jobUrl} target="_blank" rel="noreferrer">{app.jobUrl}</a></div>}
                 {app.jd && !isOpen && <div className="text-xs text-stone-500 mt-1 line-clamp-2">{app.jd.slice(0, 220)}{app.jd.length > 220 ? "…" : ""}</div>}
               </div>
