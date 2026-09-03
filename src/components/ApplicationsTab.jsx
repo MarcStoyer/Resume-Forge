@@ -2,6 +2,15 @@ import React, { useRef, useState, useMemo } from "react";
 import { saveAs } from "file-saver";
 import { deepClone, uid } from "../lib/util.js";
 import { STAGES, STAGE_IDS, stageById, computeFunnel, historyEntry } from "../lib/funnel.js";
+import HonestySlider from "./HonestySlider.jsx";
+
+const PREP_CATEGORY_LABEL = {
+  behavioral: "Behavioral", technical: "Technical", "role-fit": "Role fit",
+  company: "Company", "gap-probe": "Gap probe",
+};
+const PREP_SOURCE_LABEL = {
+  resume: "Submitted résumé", masterCV: "Master CV", coverLetter: "Cover letter", notes: "Your notes",
+};
 
 function fmtDate(ms) {
   try {
@@ -13,6 +22,7 @@ function fmtDate(ms) {
 export default function ApplicationsTab({
   apps, setApps, currentResume, currentCoverLetter, currentJd,
   currentSnapshot, setCurrentSnapshot, loadApplication,
+  interviewPrepAuto, setInterviewPrepAuto, interviewHonesty, setInterviewHonesty, runInterviewPrep,
 }) {
   const fileRef = useRef(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -97,6 +107,31 @@ export default function ApplicationsTab({
         </div>
       </div>
 
+      <div className="bg-white rounded-lg border border-stone-200 p-4 flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-stone-700 cursor-pointer">
+            <input
+              type="checkbox" checked={!!interviewPrepAuto}
+              onChange={(e) => setInterviewPrepAuto(e.target.checked)}
+              className="w-4 h-4 accent-teal-800"
+            />
+            🎯 Auto-generate interview prep
+          </label>
+          <div className="text-[11px] text-stone-400 mt-1 max-w-md">
+            Uses AI credits every time you save or mark an application applied. Off by default —
+            leave it off and generate per-application from the Details panel to control spend.
+          </div>
+        </div>
+        <div className="w-full sm:w-72">
+          <HonestySlider
+            value={interviewHonesty} onChange={setInterviewHonesty} compact
+            title="Interview prep honesty"
+            hint="How far answer suggestions may go beyond verified evidence when it's thin. Evidence citations and missing-evidence flags stay honest either way."
+          />
+          <div className="text-[10px] text-stone-400 mt-1">Interview prep honesty — applies next time you generate.</div>
+        </div>
+      </div>
+
       {apps.length === 0 ? (
         <div className="bg-white rounded-lg border border-stone-200 p-8 text-center text-stone-500 text-sm">
           You haven't saved any applications yet. Click <b>★ Save application</b> in the top bar to bookmark one, or <b>Mark Applied with this résumé</b> after tailoring.
@@ -110,6 +145,7 @@ export default function ApplicationsTab({
           apps={safeApps} setStatus={setStatus} updateApp={updateApp}
           load={load} confirmDeleteId={confirmDeleteId} setConfirmDeleteId={setConfirmDeleteId}
           deleteApp={deleteApp} expandedId={expandedId} setExpandedId={setExpandedId}
+          runInterviewPrep={runInterviewPrep}
         />
       )}
     </div>
@@ -121,7 +157,7 @@ function StatusBadge({ status }) {
   return <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide text-white" style={{ background: s.color }}>{s.label}</span>;
 }
 
-function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfirmDeleteId, deleteApp, expandedId, setExpandedId }) {
+function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfirmDeleteId, deleteApp, expandedId, setExpandedId, runInterviewPrep }) {
   return (
     <div className="space-y-2">
       {apps.slice().sort((a, b) => b.savedAt - a.savedAt).map((app) => {
@@ -189,11 +225,100 @@ function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfir
                     <pre className="text-xs text-stone-600 whitespace-pre-wrap mt-1 max-h-60 overflow-y-auto bg-stone-50 p-2 rounded">{app.jd}</pre>
                   </details>
                 )}
+                <InterviewPrepSection app={app} runInterviewPrep={runInterviewPrep} />
               </div>
             )}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function InterviewPrepSection({ app, runInterviewPrep }) {
+  const prep = app.interviewPrep;
+  const status = prep?.status;
+
+  function generate() {
+    runInterviewPrep(app);
+  }
+  function regenerate() {
+    if (confirm("Regenerate interview prep? This makes another AI request.")) runInterviewPrep(app);
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Interview prep</div>
+        {status === "done" && (
+          <button onClick={regenerate} className="text-[10px] px-2 py-0.5 rounded border border-stone-200 text-stone-500 hover:bg-stone-50">🔁 Regenerate</button>
+        )}
+      </div>
+
+      {!status && (
+        <button onClick={generate} className="text-xs px-2.5 py-1.5 rounded-md border border-teal-300 text-teal-800 hover:bg-teal-50">
+          🎯 Generate Interview Prep
+        </button>
+      )}
+      {status === "pending" && (
+        <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1.5 inline-flex items-center gap-1.5">
+          <span className="animate-pulse">●</span> Generating interview prep…
+        </div>
+      )}
+      {status === "error" && (
+        <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 flex items-center gap-2 flex-wrap">
+          <span>Failed: {prep.error}</span>
+          <button onClick={generate} className="underline">Retry</button>
+        </div>
+      )}
+      {status === "done" && (
+        <div className="space-y-2 mt-1">
+          {(prep.questions || []).map((q, i) => (
+            <div key={i} className="border border-stone-200 rounded p-2.5 text-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide bg-stone-100 text-stone-600">
+                  {PREP_CATEGORY_LABEL[q.category] || q.category || "Question"}
+                </span>
+                {q.missingEvidence && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-amber-50 text-amber-700 border border-amber-200">⚠ No verified evidence</span>
+                )}
+              </div>
+              <div className="font-semibold text-stone-800">{q.question}</div>
+              {q.whyLikely && <div className="text-stone-500 italic">Why likely: {q.whyLikely}</div>}
+
+              {Array.isArray(q.evidence) && q.evidence.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-semibold text-stone-400 uppercase tracking-wide">Evidence</div>
+                  <ul className="mt-0.5 space-y-0.5">
+                    {q.evidence.map((e, j) => (
+                      <li key={j} className="text-stone-600">
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-stone-100 text-stone-500 mr-1">{PREP_SOURCE_LABEL[e.source] || e.source}</span>
+                        {e.ref && <span className="text-stone-400">{e.ref}: </span>}
+                        {e.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {q.answerOutline && (
+                <div>
+                  <div className="text-[10px] font-semibold text-stone-400 uppercase tracking-wide">Answer outline</div>
+                  <div className="text-stone-700 whitespace-pre-wrap">{q.answerOutline}</div>
+                </div>
+              )}
+
+              {q.suggestion && (
+                <div className="bg-violet-50 border border-violet-200 rounded p-1.5">
+                  <div className="text-[10px] font-semibold text-violet-700 uppercase tracking-wide">💡 Suggested angle — illustrative, not verified</div>
+                  <div className="text-violet-800 whitespace-pre-wrap">{q.suggestion}</div>
+                </div>
+              )}
+            </div>
+          ))}
+          <div className="text-[10px] text-stone-400">Generated {fmtDate(prep.generatedAt)}.</div>
+        </div>
+      )}
     </div>
   );
 }

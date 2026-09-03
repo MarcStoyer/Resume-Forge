@@ -31,6 +31,18 @@ export function honestyPromptFragment(v) {
   return voice + `HONESTY MODE: AGGRESSIVE (level ${v}/100). Optimize for keyword match. May invent specific accomplishments and metrics. HIGH FABRICATION RISK.`;
 }
 
+// Interview prep has two kinds of content: evidence-backed (from the résumé/cover
+// letter/notes) and illustrative "suggestion" content when evidence is thin. This
+// controls how freely the suggestion side is offered — evidence citation and the
+// missingEvidence flag stay honest regardless of this setting; only "suggestion" scales.
+export function honestyPromptForInterview(v) {
+  if (v >= 95) return `INTERVIEW-PREP HONESTY: VERBATIM (${v}/100). Build every answer outline strictly from the evidence provided (submitted résumé, master CV, cover letter, notes). Do not write a "suggestion" — leave it null. If evidence is missing, set missingEvidence:true and stop there.`;
+  if (v >= 75) return `INTERVIEW-PREP HONESTY: FAITHFUL (${v}/100). Prefer the candidate's real evidence. Only write a "suggestion" when evidence is genuinely thin, and keep it structural/generic (e.g. "use the STAR format, focus on your role in the outcome") — no invented specifics: no fabricated metrics, employers, or outcomes attributed to the candidate.`;
+  if (v >= 50) return `INTERVIEW-PREP HONESTY: BALANCED (${v}/100). Ground answers in evidence first. When evidence is thin, write a fuller "suggestion" using general interview-coaching wisdom (a plausible shape of example for this kind of question) — always phrase it as an illustrative approach to adapt, never as a claim about the candidate's real history.`;
+  if (v >= 25) return `INTERVIEW-PREP HONESTY: LIBERAL (${v}/100). Offer generous illustrative "suggestion" content drawing on general wisdom for this kind of question, even when some evidence exists — the point is to give the candidate something to react to and adapt. Always phrase suggestions as illustrative, never as fact about the candidate.`;
+  return `INTERVIEW-PREP HONESTY: AGGRESSIVE (${v}/100). Freely generate a full illustrative example for every question, even without supporting evidence. Still phrase every "suggestion" as illustrative practice material, not a factual claim — this mode is for brainstorming only; the candidate must swap in a real example before using it.`;
+}
+
 export function honestyPromptForSynthesis(v) {
   const voice = SYNTHESIS_VOICE_RULE + " ";
   if (v >= 95) return voice + "Use only language and facts directly present in the source résumé. No additions, no inferences.";

@@ -17,8 +17,11 @@ An AI-assisted résumé workspace built by [Marc Stoyer](https://www.linkedin.co
 - Synchronize each account privately with Supabase Auth, Postgres, and Row Level Security
 - Export professional PDF and DOCX documents from multiple layouts
 - Start with Marc Stoyer's complete CV as an editable example
+- Generate interview prep per saved application — likely questions with rationale and
+  evidence-grounded answer outlines, drawn only from your submitted résumé, master CV,
+  cover letter, and application notes, with missing evidence flagged instead of invented
 
-New accounts receive an independent copy of the starter CV. Their edits and application history are stored under their own Supabase user ID and are not shared with other accounts.
+New accounts receive an independent copy of the starter CV. Their edits and application history are stored under their own Supabase user ID and are not shared with other accounts. `src/data/marcStoyerResume.json` (the starter CV) is generated from `Marc Stoyer Master CV.docx`, shipped at the repo root as the canonical source — re-run the extraction any time that file is updated.
 
 ## Architecture
 
@@ -45,8 +48,11 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-Run `SUPABASE_PHASE_1.sql` and then `SUPABASE_PHASE_2.sql` in the Supabase SQL
-Editor. The second script enables Row Level Security.
+Run `SUPABASE_PHASE_1.sql`, then `SUPABASE_PHASE_2.sql`, then `SUPABASE_PHASE_3.sql`
+in the Supabase SQL Editor, in that order. Phase 2 enables Row Level Security; Phase 3
+adds the interview-prep auto-generate toggle and its honesty setting. **Run Phase 3
+before deploying this version** — the app's data load selects those columns and will
+fail to load anything until they exist.
 
 For the complete app, including the two API functions:
 
@@ -64,7 +70,7 @@ deploy to production automatically; other branches can create preview deployment
 
 ### 1. Prepare Supabase
 
-1. Create a Supabase project and run both SQL files in order.
+1. Create a Supabase project and run all three SQL files in order.
 2. Under Authentication → Sign In / Providers, enable Email.
 3. Keep new-user signup enabled for a public deployment so visitors can create
    their own private workspace.

@@ -10,6 +10,7 @@ import {
   loadUserData,
   saveResume, saveTemplate, saveHonesty, saveCoverLetter,
   saveJD, saveJobUrl, savePaper, saveApps,
+  saveInterviewPrepAuto, saveInterviewHonesty,
 } from "../lib/storage.js";
 import { defaultResume } from "../data/defaultResume.js";
 import { TEMPLATES, getTemplate } from "../lib/templates.js";
@@ -19,6 +20,7 @@ import { extractText, extractJSON, mapParsed } from "../lib/parse.js";
 import { CV_EXTRACTION_REQUEST, CV_EXTRACTION_SYSTEM, parseStructuredDocxHtml } from "../lib/cvParse.js";
 import { deepClone, uid } from "../lib/util.js";
 import { historyEntry } from "../lib/funnel.js";
+import { generateInterviewPrep } from "../lib/interviewPrep.js";
 
 function readFile(file, as) {
   return new Promise((resolve, reject) => {
@@ -44,6 +46,8 @@ export default function App() {
   const [apps, setApps] = useState([]);
   const [appSnapshot, setAppSnapshot] = useState(null);
   const [paper, setPaper] = useState("letter"); // letter | a4
+  const [interviewPrepAuto, setInterviewPrepAuto] = useState(false);
+  const [interviewHonesty, setInterviewHonesty] = useState(75);
   const [storageReady, setStorageReady] = useState(false);
   const [storageErr, setStorageErr] = useState("");
 
@@ -67,6 +71,8 @@ export default function App() {
         setJobUrl(typeof data?.job_url === "string" ? data.job_url : "");
         setPaper(data?.paper || "letter");
         setApps(Array.isArray(data?.applications) ? data.applications : []);
+        setInterviewPrepAuto(!!data?.interview_prep_auto);
+        setInterviewHonesty(typeof data?.interview_honesty === "number" ? data.interview_honesty : 75);
         setStorageReady(true);
       } catch (e) {
         if (!cancelled) setStorageErr(e.message);
@@ -92,6 +98,8 @@ export default function App() {
   useEffect(() => persist(saveJobUrl, jobUrl), [jobUrl, storageReady, user.id]);
   useEffect(() => persist(saveApps, apps), [apps, storageReady, user.id]);
   useEffect(() => persist(savePaper, paper), [paper, storageReady, user.id]);
+  useEffect(() => persist(saveInterviewPrepAuto, interviewPrepAuto), [interviewPrepAuto, storageReady, user.id]);
+  useEffect(() => persist(saveInterviewHonesty, interviewHonesty), [interviewHonesty, storageReady, user.id]);
 
   async function logout() {
     setSigningOut(true);
@@ -178,13 +186,35 @@ export default function App() {
     const rec = buildAppRecord("saved");
     if (!rec) return;
     setApps((a) => [...a, rec]);
+    if (interviewPrepAuto) runInterviewPrep(rec);
     alert("Saved! Find it in the Applications tab.");
   }
   function markAppliedNow() {
     const rec = buildAppRecord("applied");
     if (!rec) return;
     setApps((a) => [...a, rec]);
+    if (interviewPrepAuto) runInterviewPrep(rec);
     setTab("apps");
+  }
+
+  function patchApp(id, patch) {
+    setApps((a) => a.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  }
+  // Generates (or regenerates) interview prep for one saved application and
+  // writes the result back onto it. Shared by the auto-trigger above and the
+  // manual "Generate"/"Regenerate" button in the Applications tab.
+  async function runInterviewPrep(app) {
+    patchApp(app.id, { interviewPrep: { status: "pending" } });
+    try {
+      const questions = await generateInterviewPrep({
+        jd: app.jd, company: app.company, role: app.role,
+        resume: app.resume, coverLetter: app.coverLetter, notes: app.notes,
+        honesty: interviewHonesty,
+      });
+      patchApp(app.id, { interviewPrep: { status: "done", generatedAt: Date.now(), questions } });
+    } catch (e) {
+      patchApp(app.id, { interviewPrep: { status: "error", error: e.message } });
+    }
   }
 
   function loadApplication(app) {
@@ -331,6 +361,9 @@ export default function App() {
           currentResume={resume} currentCoverLetter={coverLetter} currentJd={jd}
           currentSnapshot={appSnapshot} setCurrentSnapshot={setAppSnapshot}
           loadApplication={loadApplication}
+          interviewPrepAuto={interviewPrepAuto} setInterviewPrepAuto={setInterviewPrepAuto}
+          interviewHonesty={interviewHonesty} setInterviewHonesty={setInterviewHonesty}
+          runInterviewPrep={runInterviewPrep}
         />
       )}
     </div>
