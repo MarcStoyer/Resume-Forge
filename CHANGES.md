@@ -310,3 +310,77 @@ Migration
 Run SUPABASE_PHASE_4.sql in the Supabase SQL Editor before deploying this
 version. The app's data load selects the new column and will fail to load
 any data until it exists.
+
+PHASE 7 - API AUTHENTICATION, SSRF PROTECTION, AND RATE LIMITING
+
+What changed
+
+Both serverless functions were open to the entire internet with no check on
+who was calling them: /api/claude would proxy arbitrary requests to
+Anthropic using this project's own API key, and /api/fetch-url would fetch
+any URL a caller supplied server-side, including private/internal
+addresses (notably 169.254.169.254, the cloud instance-metadata endpoint
+Vercel functions can reach since they run on AWS Lambda). Neither had any
+rate limiting either.
+
+- Authentication (api/_lib/auth.js): both endpoints now require a valid
+  Supabase session. The client sends the current session's access token as
+  a Bearer header (src/lib/api.js -> authHeaders(), used by callClaude and
+  by JobMatcher.jsx's fetch-url call); the server verifies it via
+  supabase.auth.getUser(token) before doing anything else. No service-role
+  key needed - this reuses the existing anon key, which is meant to be
+  public; Row Level Security is the real boundary, and getUser() validates
+  the JWT against Supabase's own auth server.
+- SSRF protection (api/_lib/ssrf.js), /api/fetch-url only: resolves the
+  target hostname and only allows a "unicast" (ordinary public) address
+  through - an allowlist, not a denylist, so it fails closed on any address
+  type not explicitly recognized as public. IPv4-mapped IPv6 addresses
+  (::ffff:a.b.c.d) are unwrapped before the check so they can't be used to
+  sneak a private IPv4 address past it. Every redirect hop is re-resolved
+  and re-validated the same way, not just the initial URL - a URL that's
+  public but 302s to 169.254.169.254 is caught. Also added: a redirect cap
+  (5), an overall request timeout (15s) across the whole redirect chain, a
+  response-size cap (2MB, enforced via Content-Length up front and while
+  streaming in case that header is absent or wrong), and a content-type
+  allowlist (text/*, xhtml+xml, xml) so it can't be used to pull down
+  arbitrary binaries. Added the ipaddr.js dependency for correct IPv4/IPv6
+  range classification instead of hand-rolling it.
+- Rate limiting (api/_lib/rateLimit.js + SUPABASE_PHASE_5.sql): 20
+  requests/minute per user per endpoint, backed by an atomic Postgres
+  upsert (check_rate_limit()) so concurrent requests from the same user
+  can't race past the limit. This is a soft/abuse-prevention control, not
+  the primary gate authentication is - it fails OPEN on a DB/infra error
+  (including Phase 5 not being migrated yet) rather than taking the app
+  down over a missing rate-limit table.
+- Both api/claude.js and api/fetch-url.js now take an optional third `deps`
+  parameter (authenticate/checkRateLimit/fetch/safeFetch), defaulting to
+  the real implementations - Vercel always calls handler(req, res) in
+  production, so this changes nothing there, but it's what makes the
+  handlers directly testable without a live server or real Supabase/
+  Anthropic calls.
+- New tests/ (Node's built-in node:test runner, no new test-framework
+  dependency) covering: isPrivateAddress across IPv4/IPv6 private, loopback,
+  link-local/metadata, multicast, and IPv4-mapped ranges; resolveAndValidate
+  and safeFetch (redirect-to-private is rejected without a second network
+  call, redirect cap, size cap via both Content-Length and streaming,
+  timeout on a hanging response, content-type rejection); authenticate()
+  and checkRateLimit() in isolation; and both handlers end-to-end
+  (unauthenticated -> 401 through the real authenticate() with no
+  Authorization header at all, rate-limited -> 429, a literal metadata URL
+  blocked through the real SSRF guard, and a normal authenticated request
+  succeeding). `npm test` runs all of it.
+
+Residual limitation (disclosed, not fixed here): SSRF protection validates
+the resolved IP at request time but doesn't pin the TCP connection to that
+exact address, so a narrow DNS-rebinding window between our lookup and
+fetch()'s own internal lookup isn't fully closed. That's a materially
+harder attack than the direct-address and redirect cases this closes,
+which cover the overwhelming majority of real-world SSRF attempts.
+
+Migration
+
+Run SUPABASE_PHASE_5.sql in the Supabase SQL Editor. Not load-blocking like
+prior phases (rate limiting fails open if it hasn't been run), but should
+be run before sending public traffic - authentication and SSRF protection
+take effect immediately on deploy regardless of this migration; only rate
+limiting depends on it.
