@@ -48,13 +48,38 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-Run `SUPABASE_PHASE_1.sql`, then `SUPABASE_PHASE_2.sql`, then `SUPABASE_PHASE_3.sql`,
-then `SUPABASE_PHASE_4.sql` in the Supabase SQL Editor, in that order. Phase 2 enables
-Row Level Security; Phase 3 adds the interview-prep auto-generate toggle and its
-honesty setting; Phase 4 adds the interview-prep settings (trigger point, and which
-content to include/how deep) used by the gear icon next to the auto-generate toggle.
-**Run Phase 3 and Phase 4 before deploying this version** — the app's data load
-selects those columns and will fail to load anything until they exist.
+Run `SUPABASE_PHASE_1.sql` through `SUPABASE_PHASE_5.sql` in the Supabase SQL Editor,
+in that order. Phase 2 enables Row Level Security; Phase 3 adds the interview-prep
+auto-generate toggle and its honesty setting; Phase 4 adds the interview-prep settings
+(trigger point, and which content to include/how deep) used by the gear icon next to
+the auto-generate toggle; Phase 5 adds the table backing per-user rate limiting on
+`/api/claude` and `/api/fetch-url`. **Run Phase 3 and Phase 4 before deploying this
+version** — the app's data load selects those columns and will fail to load anything
+until they exist. Phase 5 is not load-blocking (both endpoints fail open — no rate
+limiting, not an outage — if it hasn't been run yet) but should still be run before
+sending public traffic; see "API security" below.
+
+### API security
+
+`/api/claude` and `/api/fetch-url` (`api/claude.js`, `api/fetch-url.js`) both require
+a valid Supabase session — the browser sends the current session's access token as a
+`Bearer` header, and the server verifies it (`api/_lib/auth.js`) before doing anything
+else. Without this, either endpoint would be an open, unmetered proxy: `/api/claude`
+would let anyone spend your Anthropic credits with arbitrary prompts, and
+`/api/fetch-url` would let anyone use your server to fetch arbitrary URLs.
+
+`/api/fetch-url` also guards against SSRF (`api/_lib/ssrf.js`): only a "public unicast"
+resolved address is allowed — private/loopback/link-local ranges are blocked,
+including `169.254.169.254` (the cloud-metadata address, a real target since Vercel
+functions run on AWS Lambda). Every redirect hop is re-validated the same way (not
+just the initial URL), redirects are capped, the whole fetch has a timeout, the
+response body is capped in size, and only text-ish content types are accepted.
+
+Both endpoints also rate-limit per user (`api/_lib/rateLimit.js`, backed by
+`SUPABASE_PHASE_5.sql`): 20 requests/minute per user per endpoint by default.
+
+Run `npm test` to exercise all of this (auth rejection, SSRF blocking incl. redirects,
+rate limiting, size/timeout caps, and the normal success path) — see `tests/`.
 
 For the complete app, including the two API functions:
 

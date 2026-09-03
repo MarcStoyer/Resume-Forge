@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { callClaude } from "../lib/api.js";
+import { callClaude, authHeaders } from "../lib/api.js";
 import { extractText, extractJSON } from "../lib/parse.js";
 import { honestyPromptFragment, honestyPromptForSynthesis } from "../lib/honesty.js";
 import { deepClone } from "../lib/util.js";
@@ -22,12 +22,12 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
     try {
       const r = await fetch("/api/fetch-url", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(await authHeaders()) },
         body: JSON.stringify({ url: jobUrl.trim() }),
       });
       const data = await r.json();
       if (!data.ok || !data.text) {
-        setErr((data.message || "Couldn't fetch that page.") + " Try pasting the description text instead.");
+        setErr((data.message || data.error?.message || "Couldn't fetch that page.") + " Try pasting the description text instead.");
         return;
       }
       const system = "You are given the raw text content of a job-posting web page (with nav, footer, and other noise). Extract ONLY the job description — title, responsibilities, qualifications, and about-the-role content. Omit navigation, cookie notices, footers, related jobs, application instructions. Return plain text, no markdown.";
