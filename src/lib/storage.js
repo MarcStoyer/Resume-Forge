@@ -11,6 +11,8 @@ const COLUMNS = [
   "job_url",
   "paper",
   "applications",
+  "interview_prep_auto",
+  "interview_honesty",
 ].join(",");
 
 function throwStorageError(action, error) {
@@ -77,3 +79,9 @@ export const savePaper = async (paper, userId) => saveField(userId, "paper", pap
 
 export const loadApps = async (userId) => loadField(userId, "applications", []);
 export const saveApps = async (applications, userId) => saveField(userId, "applications", applications);
+
+export const loadInterviewPrepAuto = async (userId) => loadField(userId, "interview_prep_auto", false);
+export const saveInterviewPrepAuto = async (v, userId) => saveField(userId, "interview_prep_auto", v);
+
+export const loadInterviewHonesty = async (userId) => loadField(userId, "interview_honesty", 75);
+export const saveInterviewHonesty = async (v, userId) => saveField(userId, "interview_honesty", v);

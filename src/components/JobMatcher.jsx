@@ -3,38 +3,7 @@ import { callClaude } from "../lib/api.js";
 import { extractText, extractJSON } from "../lib/parse.js";
 import { honestyPromptFragment, honestyPromptForSynthesis } from "../lib/honesty.js";
 import { deepClone } from "../lib/util.js";
-
-function flattenBullets(resume) {
-  const out = [];
-  resume.sections.forEach((sec) => {
-    if (sec.kind === "entries") {
-      sec.entries.forEach((en) => {
-        en.bullets.forEach((b) => {
-          out.push({
-            sectionId: sec.id, entryId: en.id, bulletId: b.id,
-            text: b.text, original: b.original || b.text, on: b.on,
-            org: en.org, role: en.role,
-          });
-        });
-      });
-    } else {
-      sec.entries.forEach((it) => {
-        out.push({ sectionId: sec.id, itemId: it.id, text: (it.label ? it.label + ": " : "") + it.text, on: it.on });
-      });
-    }
-  });
-  return out;
-}
-function flattenEntries(resume) {
-  const out = [];
-  resume.sections.forEach((sec) => {
-    if (sec.kind !== "entries") return;
-    sec.entries.forEach((en) => {
-      out.push({ sectionId: sec.id, entryId: en.id, org: en.org, role: en.role, dates: en.dates });
-    });
-  });
-  return out;
-}
+import { flattenBullets, flattenEntries } from "../lib/resumeFlatten.js";
 
 export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, setCoverLetter, openCoverTab, jobUrl, setJobUrl }) {
   const [mode, setMode] = useState("pick");

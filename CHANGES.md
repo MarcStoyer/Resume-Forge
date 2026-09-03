@@ -234,3 +234,43 @@ Deployment command summary
 
 No external deployment was performed by Codex. Linking accounts, entering secrets,
 and creating the production deployment remain explicit owner actions.
+
+PHASE 5 - INTERVIEW PREP AND REFRESHED STARTER CV
+
+What changed
+
+- Regenerated src/data/marcStoyerResume.json from an updated
+  "Marc Stoyer Master CV.docx", using the app's own CV-extraction prompt
+  (src/lib/cvParse.js) via the Claude API. Committed the source docx/pdf at the
+  repo root as the canonical shipped reference for the starter/example CV.
+- Added interview prep: for any saved application, generates likely interview
+  questions with a "why likely" rationale, blending JD/résumé-driven questions,
+  gap-probing questions, and typical questions for the role. Answer outlines are
+  grounded in evidence from four sources per application — the submitted résumé,
+  the master CV (every bullet/entry in that application's own résumé snapshot,
+  on and off, using pre-tailor text — no separate stored entity needed), the
+  cover letter, and the application's notes field. Missing evidence is flagged
+  (missingEvidence) instead of invented.
+- Added a second, separate honesty slider just for interview prep
+  (honestyPromptForInterview in src/lib/honesty.js, reusing the existing
+  HonestySlider component with new title/hint props). It only gates an optional,
+  clearly-labeled "suggestion" field for illustrative/general-wisdom content when
+  evidence is thin — evidence citations and the missingEvidence flag stay honest
+  at every level.
+- Added an auto-generate toggle (interview_prep_auto, default off) so interview
+  prep only costs an API call automatically if you opt in; otherwise generate
+  per-application on demand from the Applications tab. Both the toggle and the
+  interview honesty level are new per-user Supabase columns
+  (SUPABASE_PHASE_3.sql).
+- New src/lib/interviewPrep.js (catalog building + generation) and
+  src/lib/resumeFlatten.js (flattenBullets/flattenEntries lifted out of
+  JobMatcher.jsx so both features share one implementation).
+- Results are stored directly on the application record (interviewPrep field)
+  inside the existing applications jsonb column — no new column needed for the
+  generated content itself.
+
+Migration
+
+Run SUPABASE_PHASE_3.sql in the Supabase SQL Editor before deploying this
+version. The app's data load selects the two new columns and will fail to load
+any data until they exist.
