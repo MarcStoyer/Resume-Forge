@@ -16,7 +16,7 @@ import {
 import { defaultResume } from "../data/defaultResume.js";
 import { TEMPLATES, getTemplate } from "../lib/templates.js";
 import { exportDocx } from "../lib/docxExport.js";
-import { extractResumeFromFile, willUseApi } from "../lib/cvExtract.js";
+import { extractResumeFromFile, confirmAndExtractResume } from "../lib/cvExtract.js";
 import { deepClone, uid } from "../lib/util.js";
 import { historyEntry } from "../lib/funnel.js";
 import { generateInterviewPrep, DEFAULT_INTERVIEW_PREP_SETTINGS } from "../lib/interviewPrep.js";
@@ -128,7 +128,8 @@ export default function App() {
   // (whose résumé lives behind a link we can't fetch) can carry the document
   // that was actually submitted — which is what interview prep reasons over.
   async function attachResumeToApp(appId, file) {
-    const parsed = await extractResumeFromFile(file);
+    const parsed = await confirmAndExtractResume(file);
+    if (!parsed) return; // declined the cost warning
     patchApp(appId, { resume: parsed });
   }
 
@@ -347,7 +348,7 @@ export default function App() {
           interviewHonesty={interviewHonesty} setInterviewHonesty={setInterviewHonesty}
           interviewPrepSettings={interviewPrepSettings} setInterviewPrepSettings={setInterviewPrepSettings}
           runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep}
-          attachResumeToApp={attachResumeToApp} willUseApi={willUseApi}
+          attachResumeToApp={attachResumeToApp}
         />
       )}
 

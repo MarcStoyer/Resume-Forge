@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { STAGES } from "../lib/funnel.js";
 import { APPLICATION_SOURCES } from "../lib/jobLabel.js";
 import { buildApplication, dateInputToTimestamp, timestampToDateInput } from "../lib/applications.js";
+import { confirmAndExtractResume } from "../lib/cvExtract.js";
 
 const inputClass = "mt-1 w-full text-sm border border-stone-300 rounded px-2 py-1.5 outline-none focus:border-teal-700";
 
@@ -27,7 +28,33 @@ export default function ManualApplicationDialog({ onCancel, onSave }) {
   });
   const [labelEdited, setLabelEdited] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
+  // The résumé actually submitted, parsed to the app's structured shape up
+  // front so it saves with the application rather than needing a second trip
+  // through the Details panel.
+  const [resume, setResume] = useState(null);
+  const [resumeName, setResumeName] = useState("");
+  const [resumeBusy, setResumeBusy] = useState(false);
+  const [resumeErr, setResumeErr] = useState("");
   const firstRef = useRef(null);
+  const resumeInputRef = useRef(null);
+
+  async function pickResume(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setResumeErr("");
+    setResumeBusy(true);
+    try {
+      const parsed = await confirmAndExtractResume(file);
+      if (!parsed) return; // declined the cost warning
+      setResume(parsed);
+      setResumeName(file.name);
+    } catch (err) {
+      setResumeErr(err.message);
+    } finally {
+      setResumeBusy(false);
+    }
+  }
 
   useEffect(() => { firstRef.current?.focus(); }, []);
 
@@ -48,6 +75,7 @@ export default function ManualApplicationDialog({ onCancel, onSave }) {
     onSave(buildApplication({
       ...f,
       appliedAt: dateInputToTimestamp(f.appliedAt),
+      resume,
       origin: "manual",
     }));
   }
@@ -133,8 +161,40 @@ export default function ManualApplicationDialog({ onCancel, onSave }) {
           </div>
         )}
 
-        <div className="text-[10px] text-stone-400">
-          No résumé is attached yet — upload the one you submitted from the application's Details panel afterwards.
+        <div className="border-t border-stone-100 pt-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-xs font-medium text-stone-600">Résumé submitted</span>
+            <div className="flex items-center gap-1">
+              <input
+                ref={resumeInputRef} type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+                onChange={pickResume} className="hidden"
+              />
+              <button
+                type="button" onClick={() => resumeInputRef.current?.click()} disabled={resumeBusy}
+                className="text-[11px] px-2 py-0.5 rounded border border-teal-300 text-teal-800 hover:bg-teal-50 disabled:opacity-50"
+              >
+                {resumeBusy ? "Parsing…" : resume ? "Replace" : "Upload file"}
+              </button>
+              {resume && (
+                <button
+                  type="button" onClick={() => { setResume(null); setResumeName(""); }}
+                  className="text-[11px] px-2 py-0.5 rounded text-stone-400 hover:text-red-600"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+          {resume ? (
+            <div className="text-[11px] text-teal-800 mt-1">
+              ✓ {resumeName} — {(resume.sections || []).reduce((n, sec) => n + (sec.entries || []).length, 0)} entries parsed, usable as interview-prep evidence.
+            </div>
+          ) : (
+            <div className="text-[10px] text-stone-400 mt-1">
+              Optional. Attach the résumé you actually sent and interview prep can cite it — otherwise add it later from the application's Details panel.
+            </div>
+          )}
+          {resumeErr && <div className="text-[10px] text-red-700 mt-0.5">{resumeErr}</div>}
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
