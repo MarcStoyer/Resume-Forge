@@ -69,6 +69,12 @@ begin
 end;
 $$;
 
+-- Postgres grants EXECUTE on new functions to PUBLIC by default — revoke
+-- that explicitly, or an unauthenticated caller can invoke this too (it's
+-- harmless if they do, since auth.uid() is null for them and the function
+-- returns false before touching any data — RLS on the table is a second
+-- backstop — but it shouldn't be reachable at all).
+revoke execute on function public.check_rate_limit(text, int, int) from public;
 grant execute on function public.check_rate_limit(text, int, int) to authenticated;
 
 -- Current limits (api/claude.js, api/fetch-url.js): 20 requests per 60
