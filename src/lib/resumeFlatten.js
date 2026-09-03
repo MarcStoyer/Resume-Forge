@@ -3,6 +3,9 @@
 // both need the complete set, not just what's currently toggled on.
 export function flattenBullets(resume) {
   const out = [];
+  // Bulk-imported applications carry no résumé snapshot until one is attached,
+  // so callers can legitimately hand us an empty record.
+  if (!resume || !Array.isArray(resume.sections)) return out;
   resume.sections.forEach((sec) => {
     if (sec.kind === "entries") {
       sec.entries.forEach((en) => {
@@ -25,6 +28,7 @@ export function flattenBullets(resume) {
 
 export function flattenEntries(resume) {
   const out = [];
+  if (!resume || !Array.isArray(resume.sections)) return out;
   resume.sections.forEach((sec) => {
     if (sec.kind !== "entries") return;
     sec.entries.forEach((en) => {

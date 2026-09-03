@@ -69,6 +69,11 @@ export async function generateInterviewPrep({ jd, company, role, resume, coverLe
   const s = { ...DEFAULT_INTERVIEW_PREP_SETTINGS, ...(settings || {}) };
   const depth = DEPTH[s.depth] || DEPTH.standard;
   const { submitted, master } = buildCatalogs(resume);
+  // Bulk-imported applications start with no résumé snapshot. Generating prep
+  // from nothing would silently produce evidence-free filler, so say so.
+  if (!submitted.length && !master.length && !coverLetter?.trim() && !notes?.trim()) {
+    throw new Error("No résumé, cover letter, or notes attached to this application yet — attach one first.");
+  }
   const candidateName = resume?.contact?.name || "the candidate";
 
   const schemaFields = ['"category":"behavioral|technical|role-fit|company|gap-probe"', '"question":"..."'];
