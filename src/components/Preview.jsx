@@ -44,12 +44,12 @@ function Entry({ en, t }) {
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span style={{ fontWeight: 700, fontSize: t.sizes.body }}>{en.org}</span>
-        <span style={{ fontSize: t.sizes.sub, color: "#555" }}>{en.dates}</span>
+        <span style={{ fontSize: t.sizes.body }}>{en.org}</span>
+        <span style={{ fontWeight: 700, fontSize: t.sizes.body }}>{en.loc}</span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontStyle: "italic", fontSize: t.sizes.body - 1, color: "#444" }}>
         <span>{en.role}</span>
-        <span style={{ fontStyle: "normal", color: "#777" }}>{en.loc}</span>
+        <span style={{ fontSize: t.sizes.sub, color: "#555" }}>{en.dates}</span>
       </div>
       {en.sub && <div style={{ fontSize: t.sizes.sub, color: "#777", fontStyle: "italic" }}>{en.sub}</div>}
       {bl.length > 0 && (
