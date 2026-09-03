@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import mammoth from "mammoth";
 import Builder from "./Builder.jsx";
 import Preview from "./Preview.jsx";
 import CoverLetterTab from "./CoverLetterTab.jsx";
@@ -17,23 +16,10 @@ import {
 import { defaultResume } from "../data/defaultResume.js";
 import { TEMPLATES, getTemplate } from "../lib/templates.js";
 import { exportDocx } from "../lib/docxExport.js";
-import { callClaude } from "../lib/api.js";
-import { extractText, extractJSON, mapParsed } from "../lib/parse.js";
-import { CV_EXTRACTION_REQUEST, CV_EXTRACTION_SYSTEM, parseStructuredDocxHtml } from "../lib/cvParse.js";
+import { extractResumeFromFile, willUseApi } from "../lib/cvExtract.js";
 import { deepClone, uid } from "../lib/util.js";
 import { historyEntry } from "../lib/funnel.js";
 import { generateInterviewPrep, DEFAULT_INTERVIEW_PREP_SETTINGS } from "../lib/interviewPrep.js";
-
-function readFile(file, as) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = () => reject(new Error("file read failed"));
-    if (as === "dataURL") r.readAsDataURL(file);
-    else if (as === "arrayBuffer") r.readAsArrayBuffer(file);
-    else r.readAsText(file);
-  });
-}
 
 export default function App() {
   const { user, signOut } = useAuth();
@@ -129,46 +115,21 @@ export default function App() {
     if (!file) return;
     setUploading(true); setUploadErr("");
     try {
-      const system = CV_EXTRACTION_SYSTEM;
-      const name = file.name.toLowerCase();
-      let content;
-      let parsed = null;
-      if (name.endsWith(".pdf")) {
-        const b64 = (await readFile(file, "dataURL")).split(",")[1];
-        content = [
-          { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } },
-          { type: "text", text: CV_EXTRACTION_REQUEST },
-        ];
-      } else if (name.endsWith(".docx")) {
-        const buf = await readFile(file, "arrayBuffer");
-        const out = await mammoth.convertToHtml({ arrayBuffer: buf });
-        parsed = parseStructuredDocxHtml(out.value);
-        if (!parsed) {
-          content = CV_EXTRACTION_REQUEST + "\n\nThe source below is semantic HTML converted from DOCX. Preserve table-row relationships:\n\n" + out.value;
-        }
-      } else if (/\.(png|jpe?g|webp|gif)$/.test(name)) {
-        const b64 = (await readFile(file, "dataURL")).split(",")[1];
-        const mt = "image/" + (name.endsWith(".png") ? "png" : name.endsWith(".webp") ? "webp" : name.endsWith(".gif") ? "gif" : "jpeg");
-        content = [
-          { type: "image", source: { type: "base64", media_type: mt, data: b64 } },
-          { type: "text", text: CV_EXTRACTION_REQUEST },
-        ];
-      } else {
-        const text = await readFile(file, "text");
-        content = CV_EXTRACTION_REQUEST + "\n\n" + text;
-      }
-      if (!parsed) {
-        const data = await callClaude({ system, messages: [{ role: "user", content }], max_tokens: 8000 });
-        parsed = extractJSON(extractText(data));
-      }
-      if (parsed) setResume(mapParsed(parsed));
-      else setUploadErr("Couldn't parse that file. Try a DOCX or text-based PDF.");
-    } catch (e) {
-      setUploadErr("Upload failed: " + e.message);
+      setResume(await extractResumeFromFile(file));
+    } catch (e2) {
+      setUploadErr("Upload failed: " + e2.message);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
     }
+  }
+
+  // Attaches a résumé file to one saved application, so bulk-imported rows
+  // (whose résumé lives behind a link we can't fetch) can carry the document
+  // that was actually submitted — which is what interview prep reasons over.
+  async function attachResumeToApp(appId, file) {
+    const parsed = await extractResumeFromFile(file);
+    patchApp(appId, { resume: parsed });
   }
 
   // Builds the record from the values the save dialog collected. The label no
@@ -386,6 +347,7 @@ export default function App() {
           interviewHonesty={interviewHonesty} setInterviewHonesty={setInterviewHonesty}
           interviewPrepSettings={interviewPrepSettings} setInterviewPrepSettings={setInterviewPrepSettings}
           runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep}
+          attachResumeToApp={attachResumeToApp} willUseApi={willUseApi}
         />
       )}
 
