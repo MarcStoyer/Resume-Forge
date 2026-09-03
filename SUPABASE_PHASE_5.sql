@@ -69,12 +69,17 @@ begin
 end;
 $$;
 
--- Postgres grants EXECUTE on new functions to PUBLIC by default — revoke
--- that explicitly, or an unauthenticated caller can invoke this too (it's
--- harmless if they do, since auth.uid() is null for them and the function
--- returns false before touching any data — RLS on the table is a second
--- backstop — but it shouldn't be reachable at all).
+-- Two separate default grants both need revoking, or an unauthenticated
+-- caller can invoke this too (harmless if they do — auth.uid() is null for
+-- them, so the function returns false before touching any data, and RLS on
+-- the table is a second backstop — but it shouldn't be reachable at all):
+-- Postgres itself grants EXECUTE on every new function to PUBLIC by
+-- default, and Supabase additionally auto-grants EXECUTE on every new
+-- public-schema function directly to `anon` (a platform default, layered
+-- on top of and independent from Postgres's own PUBLIC default — revoking
+-- from PUBLIC alone does not remove this one).
 revoke execute on function public.check_rate_limit(text, int, int) from public;
+revoke execute on function public.check_rate_limit(text, int, int) from anon;
 grant execute on function public.check_rate_limit(text, int, int) to authenticated;
 
 -- Current limits (api/claude.js, api/fetch-url.js): 20 requests per 60
