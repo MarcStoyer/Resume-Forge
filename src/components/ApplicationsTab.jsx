@@ -3,6 +3,7 @@ import { saveAs } from "file-saver";
 import { deepClone, uid } from "../lib/util.js";
 import { STAGES, STAGE_IDS, stageById, computeFunnel, historyEntry } from "../lib/funnel.js";
 import HonestySlider from "./HonestySlider.jsx";
+import ImportApplicationsDialog from "./ImportApplicationsDialog.jsx";
 
 const PREP_CATEGORY_LABEL = {
   behavioral: "Behavioral", technical: "Technical", "role-fit": "Role fit",
@@ -113,6 +114,7 @@ export default function ApplicationsTab({
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [view, setView] = useState("list"); // 'list' | 'kanban' | 'funnel'
   const [expandedId, setExpandedId] = useState(null);
+  const [importing, setImporting] = useState(false);
 
   // Migrate any old saved app missing status fields (defensive)
   const safeApps = useMemo(() => apps.map((a) => ({
@@ -193,7 +195,8 @@ export default function ApplicationsTab({
             <button onClick={restorePrevious} className="text-xs px-2.5 py-1.5 rounded-md border border-stone-300 hover:bg-stone-50">↶ Restore previous state</button>
           )}
           <input ref={fileRef} type="file" accept=".json" onChange={importAll} className="hidden" />
-          <button onClick={() => fileRef.current?.click()} className="text-xs px-2.5 py-1.5 rounded-md border border-stone-300 hover:bg-stone-50">Import</button>
+          <button onClick={() => setImporting(true)} className="text-xs px-2.5 py-1.5 rounded-md border border-stone-300 hover:bg-stone-50">📊 Import sheet</button>
+          <button onClick={() => fileRef.current?.click()} className="text-xs px-2.5 py-1.5 rounded-md border border-stone-300 hover:bg-stone-50">Import JSON</button>
           <button onClick={exportAll} disabled={!apps.length} className="text-xs px-2.5 py-1.5 rounded-md border border-stone-300 hover:bg-stone-50 disabled:opacity-50">Export</button>
         </div>
       </div>
@@ -242,6 +245,13 @@ export default function ApplicationsTab({
           load={load} confirmDeleteId={confirmDeleteId} setConfirmDeleteId={setConfirmDeleteId}
           deleteApp={deleteApp} expandedId={expandedId} setExpandedId={setExpandedId}
           runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep}
+        />
+      )}
+
+      {importing && (
+        <ImportApplicationsDialog
+          onCancel={() => setImporting(false)}
+          onImport={(records) => setApps([...apps, ...records])}
         />
       )}
     </div>
@@ -318,6 +328,13 @@ function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfir
                     className="w-full text-xs border border-stone-200 rounded p-1.5 outline-none focus:border-stone-400"
                   />
                 </div>
+                {app.resumeUrl && (
+                  <div>
+                    <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">Résumé link</div>
+                    <a href={app.resumeUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline break-all">{app.resumeUrl}</a>
+                    {!app.resume && <div className="text-[10px] text-amber-700 mt-0.5">No résumé attached to this application yet.</div>}
+                  </div>
+                )}
                 {app.jd && (
                   <details>
                     <summary className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide cursor-pointer">Job description</summary>
