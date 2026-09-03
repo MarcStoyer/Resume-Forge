@@ -4,8 +4,8 @@
 // Google Sheets / Excel). Everything here is pure so it can be unit tested
 // without a browser.
 
-import { uid } from "./util.js";
-import { STAGE_IDS, historyEntry } from "./funnel.js";
+import { STAGE_IDS } from "./funnel.js";
+import { buildApplication } from "./applications.js";
 
 function tidy(v) {
   return String(v ?? "").replace(/\s+/g, " ").trim();
@@ -157,31 +157,24 @@ export function rowsToApplications(rows, mapping, { headerRow = true } = {}) {
     const company = get("company");
     const role = get("role");
     const explicitLabel = get("label");
-    const label = explicitLabel || [company, role].filter(Boolean).join(" — ") || "Untitled";
 
     // A row with nothing identifying in it is spacer junk, not an application.
     if (!company && !role && !explicitLabel) continue;
 
-    const status = normalizeStatus(get("status"));
-    const appliedAt = parseAppliedDate(get("appliedAt"));
-
-    out.push({
-      id: uid(),
-      label,
+    out.push(buildApplication({
+      label: explicitLabel,
       company,
       role,
       source: get("source"),
-      status,
-      statusHistory: [{ ...historyEntry(status), at: appliedAt }],
-      savedAt: appliedAt,
+      status: normalizeStatus(get("status")),
+      appliedAt: parseAppliedDate(get("appliedAt")),
       jd: get("jd"),
       jobUrl: get("jobUrl"),
       resumeUrl: get("resumeUrl"),
       coverLetter: get("coverLetter"),
       notes: get("notes"),
-      resume: null,
-      importedAt: Date.now(),
-    });
+      origin: "import",
+    }));
   }
   return out;
 }

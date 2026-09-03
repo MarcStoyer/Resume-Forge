@@ -4,6 +4,7 @@ import { deepClone, uid } from "../lib/util.js";
 import { STAGES, STAGE_IDS, stageById, computeFunnel, historyEntry } from "../lib/funnel.js";
 import HonestySlider from "./HonestySlider.jsx";
 import ImportApplicationsDialog from "./ImportApplicationsDialog.jsx";
+import ManualApplicationDialog from "./ManualApplicationDialog.jsx";
 
 const PREP_CATEGORY_LABEL = {
   behavioral: "Behavioral", technical: "Technical", "role-fit": "Role fit",
@@ -116,6 +117,7 @@ export default function ApplicationsTab({
   const [view, setView] = useState("list"); // 'list' | 'kanban' | 'funnel'
   const [expandedId, setExpandedId] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [addingManual, setAddingManual] = useState(false);
 
   // Migrate any old saved app missing status fields (defensive)
   const safeApps = useMemo(() => apps.map((a) => ({
@@ -196,6 +198,7 @@ export default function ApplicationsTab({
             <button onClick={restorePrevious} className="text-xs px-2.5 py-1.5 rounded-md border border-stone-300 hover:bg-stone-50">↶ Restore previous state</button>
           )}
           <input ref={fileRef} type="file" accept=".json" onChange={importAll} className="hidden" />
+          <button onClick={() => setAddingManual(true)} className="text-xs px-2.5 py-1.5 rounded-md text-white font-medium" style={{ background: "#1f4e5f" }}>＋ Add application</button>
           <button onClick={() => setImporting(true)} className="text-xs px-2.5 py-1.5 rounded-md border border-stone-300 hover:bg-stone-50">📊 Import sheet</button>
           <button onClick={() => fileRef.current?.click()} className="text-xs px-2.5 py-1.5 rounded-md border border-stone-300 hover:bg-stone-50">Import JSON</button>
           <button onClick={exportAll} disabled={!apps.length} className="text-xs px-2.5 py-1.5 rounded-md border border-stone-300 hover:bg-stone-50 disabled:opacity-50">Export</button>
@@ -234,7 +237,7 @@ export default function ApplicationsTab({
 
       {apps.length === 0 ? (
         <div className="bg-white rounded-lg border border-stone-200 p-8 text-center text-stone-500 text-sm">
-          You haven't saved any applications yet. Click <b>★ Save application</b> in the top bar to bookmark one, or <b>Mark Applied with this résumé</b> after tailoring.
+          You haven't saved any applications yet. Click <b>＋ Add application</b> to log one directly, <b>📊 Import sheet</b> to bring over a spreadsheet, or use <b>★ Save application</b> in the top bar after tailoring.
         </div>
       ) : view === "funnel" ? (
         <FunnelView counts={counts} apps={safeApps} />
@@ -248,6 +251,13 @@ export default function ApplicationsTab({
           runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep}
           currentCoverLetter={currentCoverLetter}
           attachResumeToApp={attachResumeToApp} willUseApi={willUseApi}
+        />
+      )}
+
+      {addingManual && (
+        <ManualApplicationDialog
+          onCancel={() => setAddingManual(false)}
+          onSave={(record) => { setApps([...apps, record]); setAddingManual(false); setExpandedId(record.id); }}
         />
       )}
 
