@@ -110,7 +110,7 @@ export default function ApplicationsTab({
   currentSnapshot, setCurrentSnapshot, loadApplication,
   interviewPrepAuto, setInterviewPrepAuto, interviewHonesty, setInterviewHonesty,
   interviewPrepSettings, setInterviewPrepSettings, runInterviewPrep, cancelInterviewPrep,
-  attachResumeToApp, willUseApi,
+  attachResumeToApp,
 }) {
   const fileRef = useRef(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -250,7 +250,7 @@ export default function ApplicationsTab({
           deleteApp={deleteApp} expandedId={expandedId} setExpandedId={setExpandedId}
           runInterviewPrep={runInterviewPrep} cancelInterviewPrep={cancelInterviewPrep}
           currentCoverLetter={currentCoverLetter}
-          attachResumeToApp={attachResumeToApp} willUseApi={willUseApi}
+          attachResumeToApp={attachResumeToApp}
         />
       )}
 
@@ -276,7 +276,7 @@ function StatusBadge({ status }) {
   return <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide text-white" style={{ background: s.color }}>{s.label}</span>;
 }
 
-function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfirmDeleteId, deleteApp, expandedId, setExpandedId, runInterviewPrep, cancelInterviewPrep, currentCoverLetter, attachResumeToApp, willUseApi }) {
+function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfirmDeleteId, deleteApp, expandedId, setExpandedId, runInterviewPrep, cancelInterviewPrep, currentCoverLetter, attachResumeToApp }) {
   return (
     <div className="space-y-2">
       {apps.slice().sort((a, b) => b.savedAt - a.savedAt).map((app) => {
@@ -342,7 +342,7 @@ function ListView({ apps, setStatus, updateApp, load, confirmDeleteId, setConfir
                   />
                 </div>
                 <ApplicationCoverLetter app={app} updateApp={updateApp} currentCoverLetter={currentCoverLetter} />
-                <ApplicationResume app={app} attachResumeToApp={attachResumeToApp} willUseApi={willUseApi} />
+                <ApplicationResume app={app} attachResumeToApp={attachResumeToApp} />
                 {app.jd && (
                   <details>
                     <summary className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide cursor-pointer">Job description</summary>
@@ -462,7 +462,7 @@ function InterviewPrepSection({ app, runInterviewPrep, cancelInterviewPrep }) {
 // extraction pipeline as the main CV upload and is stored structured, which
 // means no binary blobs in the applications column and the result is usable as
 // interview-prep evidence.
-function ApplicationResume({ app, attachResumeToApp, willUseApi }) {
+function ApplicationResume({ app, attachResumeToApp }) {
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -474,13 +474,6 @@ function ApplicationResume({ app, attachResumeToApp, willUseApi }) {
     if (!file || !attachResumeToApp) return;
     setErr("");
     try {
-      if (willUseApi && (await willUseApi(file))) {
-        const ok = confirm(
-          `"${file.name}" can't be read locally, so parsing it costs one AI request.\n\n` +
-          "A DOCX saved from Word or Google Docs is usually free to parse. Continue?"
-        );
-        if (!ok) return;
-      }
       setBusy(true);
       await attachResumeToApp(app.id, file);
     } catch (e2) {

@@ -36,6 +36,21 @@ export async function willUseApi(file) {
   }
 }
 
+// Wraps extraction with the cost warning, so every entry point words it the
+// same way and none of them can quietly spend a request. Returns null when the
+// user declines.
+export async function confirmAndExtractResume(file, { confirmFn } = {}) {
+  const ask = confirmFn || ((msg) => window.confirm(msg));
+  if (await willUseApi(file)) {
+    const ok = ask(
+      `"${file.name}" can't be read locally, so parsing it costs one AI request.\n\n` +
+      "A DOCX saved from Word or Google Docs is usually free to parse. Continue?"
+    );
+    if (!ok) return null;
+  }
+  return extractResumeFromFile(file);
+}
+
 export async function extractResumeFromFile(file) {
   const name = (file.name || "").toLowerCase();
   let content;
