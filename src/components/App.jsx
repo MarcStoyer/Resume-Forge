@@ -10,7 +10,7 @@ import {
   loadUserData,
   saveResume, saveTemplate, saveHonesty, saveCoverLetter,
   saveJD, saveJobUrl, savePaper, saveApps,
-  saveInterviewPrepAuto, saveInterviewHonesty,
+  saveInterviewPrepAuto, saveInterviewHonesty, saveInterviewPrepSettings,
 } from "../lib/storage.js";
 import { defaultResume } from "../data/defaultResume.js";
 import { TEMPLATES, getTemplate } from "../lib/templates.js";
@@ -20,7 +20,7 @@ import { extractText, extractJSON, mapParsed } from "../lib/parse.js";
 import { CV_EXTRACTION_REQUEST, CV_EXTRACTION_SYSTEM, parseStructuredDocxHtml } from "../lib/cvParse.js";
 import { deepClone, uid } from "../lib/util.js";
 import { historyEntry } from "../lib/funnel.js";
-import { generateInterviewPrep } from "../lib/interviewPrep.js";
+import { generateInterviewPrep, DEFAULT_INTERVIEW_PREP_SETTINGS } from "../lib/interviewPrep.js";
 
 function readFile(file, as) {
   return new Promise((resolve, reject) => {
@@ -48,6 +48,7 @@ export default function App() {
   const [paper, setPaper] = useState("letter"); // letter | a4
   const [interviewPrepAuto, setInterviewPrepAuto] = useState(false);
   const [interviewHonesty, setInterviewHonesty] = useState(75);
+  const [interviewPrepSettings, setInterviewPrepSettings] = useState(DEFAULT_INTERVIEW_PREP_SETTINGS);
   const [storageReady, setStorageReady] = useState(false);
   const [storageErr, setStorageErr] = useState("");
 
@@ -73,6 +74,7 @@ export default function App() {
         setApps(Array.isArray(data?.applications) ? data.applications : []);
         setInterviewPrepAuto(!!data?.interview_prep_auto);
         setInterviewHonesty(typeof data?.interview_honesty === "number" ? data.interview_honesty : 75);
+        setInterviewPrepSettings({ ...DEFAULT_INTERVIEW_PREP_SETTINGS, ...(data?.interview_prep_settings || {}) });
         setStorageReady(true);
       } catch (e) {
         if (!cancelled) setStorageErr(e.message);
@@ -100,6 +102,7 @@ export default function App() {
   useEffect(() => persist(savePaper, paper), [paper, storageReady, user.id]);
   useEffect(() => persist(saveInterviewPrepAuto, interviewPrepAuto), [interviewPrepAuto, storageReady, user.id]);
   useEffect(() => persist(saveInterviewHonesty, interviewHonesty), [interviewHonesty, storageReady, user.id]);
+  useEffect(() => persist(saveInterviewPrepSettings, interviewPrepSettings), [interviewPrepSettings, storageReady, user.id]);
 
   async function logout() {
     setSigningOut(true);
@@ -186,14 +189,14 @@ export default function App() {
     const rec = buildAppRecord("saved");
     if (!rec) return;
     setApps((a) => [...a, rec]);
-    if (interviewPrepAuto) runInterviewPrep(rec);
+    if (interviewPrepAuto && interviewPrepSettings.trigger === "applied") runInterviewPrep(rec);
     alert("Saved! Find it in the Applications tab.");
   }
   function markAppliedNow() {
     const rec = buildAppRecord("applied");
     if (!rec) return;
     setApps((a) => [...a, rec]);
-    if (interviewPrepAuto) runInterviewPrep(rec);
+    if (interviewPrepAuto && interviewPrepSettings.trigger === "applied") runInterviewPrep(rec);
     setTab("apps");
   }
 
@@ -201,15 +204,16 @@ export default function App() {
     setApps((a) => a.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   }
   // Generates (or regenerates) interview prep for one saved application and
-  // writes the result back onto it. Shared by the auto-trigger above and the
-  // manual "Generate"/"Regenerate" button in the Applications tab.
+  // writes the result back onto it. Shared by the auto-trigger above, the
+  // status-change trigger in ApplicationsTab, and the manual
+  // "Generate"/"Regenerate" button.
   async function runInterviewPrep(app) {
     patchApp(app.id, { interviewPrep: { status: "pending" } });
     try {
       const questions = await generateInterviewPrep({
         jd: app.jd, company: app.company, role: app.role,
         resume: app.resume, coverLetter: app.coverLetter, notes: app.notes,
-        honesty: interviewHonesty,
+        honesty: interviewHonesty, settings: interviewPrepSettings,
       });
       patchApp(app.id, { interviewPrep: { status: "done", generatedAt: Date.now(), questions } });
     } catch (e) {
@@ -363,6 +367,7 @@ export default function App() {
           loadApplication={loadApplication}
           interviewPrepAuto={interviewPrepAuto} setInterviewPrepAuto={setInterviewPrepAuto}
           interviewHonesty={interviewHonesty} setInterviewHonesty={setInterviewHonesty}
+          interviewPrepSettings={interviewPrepSettings} setInterviewPrepSettings={setInterviewPrepSettings}
           runInterviewPrep={runInterviewPrep}
         />
       )}

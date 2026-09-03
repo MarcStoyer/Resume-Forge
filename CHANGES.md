@@ -274,3 +274,39 @@ Migration
 Run SUPABASE_PHASE_3.sql in the Supabase SQL Editor before deploying this
 version. The app's data load selects the two new columns and will fail to load
 any data until they exist.
+
+PHASE 6 - INTERVIEW PREP SETTINGS
+
+What changed
+
+- Fixed a bug where generateInterviewPrep's response could get truncated
+  before the JSON closed, causing "Couldn't parse interview prep from the
+  response" — max_tokens was 4500 for output that regularly needs as much
+  room as the résumé-extraction call (8000). Raised it to match, and the
+  parse-failure message now says explicitly when it was a max_tokens cutoff
+  vs. a genuine parse failure.
+- Added a settings popover (gear icon next to the auto-generate toggle in the
+  Applications tab) with:
+  - Trigger — auto-generate either at save/mark-applied time (the original
+    behavior) or only once an application's status is moved to Interview, so
+    prep isn't generated before there's actually an interview to prep for.
+  - Depth — quick (4-6 questions, terse), standard (8-12, the original
+    default), or deep (8-12 with richer evidence and answer outlines).
+  - Include toggles — reasoning (why each question is likely), examples
+    (cited evidence from the résumé/cover letter/notes), and answers (answer
+    outlines, missing-evidence flag, and suggestion). Each toggle removes
+    that content from both the prompt and the requested JSON schema, not
+    just the display, so turning things off also reduces the request's
+    token usage.
+- New src/lib/interviewPrep.js -> DEFAULT_INTERVIEW_PREP_SETTINGS, merged
+  over whatever's stored so old/partial settings objects stay valid as new
+  keys are added later.
+- Settings are stored as one jsonb object (interview_prep_settings) rather
+  than a column per setting, to avoid a schema migration for every future
+  toggle (SUPABASE_PHASE_4.sql).
+
+Migration
+
+Run SUPABASE_PHASE_4.sql in the Supabase SQL Editor before deploying this
+version. The app's data load selects the new column and will fail to load
+any data until it exists.

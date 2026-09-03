@@ -12,6 +12,90 @@ const PREP_SOURCE_LABEL = {
   resume: "Submitted résumé", masterCV: "Master CV", coverLetter: "Cover letter", notes: "Your notes",
 };
 
+const DEPTH_OPTIONS = [
+  { id: "quick", label: "Quick", hint: "4-6 questions, terse — cheapest and fastest." },
+  { id: "standard", label: "Standard", hint: "8-12 questions, full detail." },
+  { id: "deep", label: "Deep", hint: "8-12 questions, richer evidence and answer outlines." },
+];
+
+// Gear icon next to the auto-generate toggle. Opens a small popover of
+// interview-prep settings — when auto-generate fires, and what content each
+// generation includes/how thorough it is. Purely a settings editor; actual
+// generation stays in runInterviewPrep (App.jsx).
+function InterviewPrepSettingsPopover({ settings, setSettings }) {
+  const [open, setOpen] = useState(false);
+  function patch(p) { setSettings({ ...settings, ...p }); }
+
+  return (
+    <div className="relative">
+      <button
+        type="button" onClick={() => setOpen((o) => !o)}
+        title="Interview prep settings" aria-label="Interview prep settings"
+        className={`text-sm leading-none w-6 h-6 rounded flex items-center justify-center ${open ? "bg-stone-100 text-stone-700" : "text-stone-400 hover:text-stone-700 hover:bg-stone-100"}`}
+      >
+        ⚙
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-1 z-20 w-72 bg-white border border-stone-200 rounded-lg shadow-lg p-3 space-y-3 text-xs">
+            <div>
+              <div className="font-semibold text-stone-700 mb-1">Auto-generate when</div>
+              <label className="flex items-center gap-2 py-0.5 cursor-pointer">
+                <input
+                  type="radio" name="prep-trigger" checked={settings.trigger === "applied"}
+                  onChange={() => patch({ trigger: "applied" })} className="accent-teal-800"
+                />
+                Saved or marked Applied
+              </label>
+              <label className="flex items-center gap-2 py-0.5 cursor-pointer">
+                <input
+                  type="radio" name="prep-trigger" checked={settings.trigger === "interview"}
+                  onChange={() => patch({ trigger: "interview" })} className="accent-teal-800"
+                />
+                Status set to Interview
+              </label>
+            </div>
+
+            <div className="border-t border-stone-100 pt-2">
+              <div className="font-semibold text-stone-700 mb-1">Depth</div>
+              <div className="flex bg-stone-100 rounded-md p-0.5">
+                {DEPTH_OPTIONS.map((d) => (
+                  <button
+                    key={d.id} type="button" onClick={() => patch({ depth: d.id })} title={d.hint}
+                    className={`flex-1 px-1.5 py-1 rounded text-[11px] ${settings.depth === d.id ? "bg-white shadow-sm font-medium text-stone-800" : "text-stone-500"}`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+              <div className="text-[10px] text-stone-400 mt-1">{(DEPTH_OPTIONS.find((d) => d.id === settings.depth) || DEPTH_OPTIONS[1]).hint}</div>
+            </div>
+
+            <div className="border-t border-stone-100 pt-2 space-y-1">
+              <div className="font-semibold text-stone-700 mb-1">Include</div>
+              <label className="flex items-center justify-between py-0.5 cursor-pointer">
+                <span>Reasoning <span className="text-stone-400">— why each question is likely</span></span>
+                <input type="checkbox" checked={settings.reasoning} onChange={(e) => patch({ reasoning: e.target.checked })} className="accent-teal-800" />
+              </label>
+              <label className="flex items-center justify-between py-0.5 cursor-pointer">
+                <span>Examples <span className="text-stone-400">— evidence cited from your history</span></span>
+                <input type="checkbox" checked={settings.examples} onChange={(e) => patch({ examples: e.target.checked })} className="accent-teal-800" />
+              </label>
+              <label className="flex items-center justify-between py-0.5 cursor-pointer">
+                <span>Answers <span className="text-stone-400">— answer outlines & suggestions</span></span>
+                <input type="checkbox" checked={settings.answers} onChange={(e) => patch({ answers: e.target.checked })} className="accent-teal-800" />
+              </label>
+            </div>
+
+            <div className="text-[10px] text-stone-400 border-t border-stone-100 pt-2">Applies next time prep is generated for an application.</div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function fmtDate(ms) {
   try {
     const d = new Date(ms);
@@ -22,7 +106,8 @@ function fmtDate(ms) {
 export default function ApplicationsTab({
   apps, setApps, currentResume, currentCoverLetter, currentJd,
   currentSnapshot, setCurrentSnapshot, loadApplication,
-  interviewPrepAuto, setInterviewPrepAuto, interviewHonesty, setInterviewHonesty, runInterviewPrep,
+  interviewPrepAuto, setInterviewPrepAuto, interviewHonesty, setInterviewHonesty,
+  interviewPrepSettings, setInterviewPrepSettings, runInterviewPrep,
 }) {
   const fileRef = useRef(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -80,6 +165,12 @@ export default function ApplicationsTab({
     if (newStatus === app.status) return;
     const history = [...(app.statusHistory || []), historyEntry(newStatus, note)];
     updateApp(app.id, { status: newStatus, statusHistory: history });
+    if (
+      interviewPrepAuto && interviewPrepSettings.trigger === "interview" &&
+      newStatus === "interview" && !app.interviewPrep
+    ) {
+      runInterviewPrep(app);
+    }
   }
 
   const counts = useMemo(() => computeFunnel(safeApps), [safeApps]);
@@ -109,16 +200,21 @@ export default function ApplicationsTab({
 
       <div className="bg-white rounded-lg border border-stone-200 p-4 flex items-start justify-between flex-wrap gap-4">
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-stone-700 cursor-pointer">
-            <input
-              type="checkbox" checked={!!interviewPrepAuto}
-              onChange={(e) => setInterviewPrepAuto(e.target.checked)}
-              className="w-4 h-4 accent-teal-800"
-            />
-            🎯 Auto-generate interview prep
-          </label>
+          <div className="flex items-center gap-1">
+            <label className="flex items-center gap-2 text-sm font-medium text-stone-700 cursor-pointer">
+              <input
+                type="checkbox" checked={!!interviewPrepAuto}
+                onChange={(e) => setInterviewPrepAuto(e.target.checked)}
+                className="w-4 h-4 accent-teal-800"
+              />
+              🎯 Auto-generate interview prep
+            </label>
+            <InterviewPrepSettingsPopover settings={interviewPrepSettings} setSettings={setInterviewPrepSettings} />
+          </div>
           <div className="text-[11px] text-stone-400 mt-1 max-w-md">
-            Uses AI credits every time you save or mark an application applied. Off by default —
+            Uses AI credits every time {interviewPrepSettings.trigger === "interview"
+              ? "an application's status moves to Interview"
+              : "you save or mark an application applied"}. Off by default —
             leave it off and generate per-application from the Details panel to control spend.
           </div>
         </div>
