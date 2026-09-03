@@ -61,10 +61,15 @@ export async function generateInterviewPrep({ jd, company, role, resume, coverLe
     notes?.trim() ? `CANDIDATE'S OWN NOTES ON THIS APPLICATION:\n${notes.trim()}` : "",
   ].filter(Boolean).join("\n\n");
 
-  const data = await callClaude({ system, messages: [{ role: "user", content: user }], max_tokens: 4500 });
+  const data = await callClaude({ system, messages: [{ role: "user", content: user }], max_tokens: 8000 });
   const parsed = extractJSON(extractText(data));
   if (!parsed || !Array.isArray(parsed.questions)) {
-    throw new Error("Couldn't parse interview prep from the response — try again.");
+    const truncated = data?.stop_reason === "max_tokens";
+    throw new Error(
+      truncated
+        ? "The response was cut off before finishing (hit the token limit) — try again."
+        : "Couldn't parse interview prep from the response — try again."
+    );
   }
   return parsed.questions;
 }
