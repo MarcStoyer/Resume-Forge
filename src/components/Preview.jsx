@@ -26,7 +26,7 @@ function SectionTitle({ children, t }) {
     letterSpacing: t.titleStyle === "rule" ? "0.12em" : "0.06em",
     marginBottom: 6, paddingBottom: 2,
   };
-  if (t.titleStyle === "underline") base.borderBottom = "1px solid #ccc";
+  if (t.titleStyle === "underline") base.borderBottom = "1px solid " + t.accent;
   if (t.titleStyle === "rule") base.borderBottom = "1px solid " + t.accent;
   if (t.titleStyle === "bar") {
     return (
@@ -134,16 +134,34 @@ export default function Preview({ resume, template: t, paper = "letter", printMo
     <p style={{ marginBottom: t.sectionGap, textAlign: "justify", fontSize: t.sizes.body }}>{resume.profile.text}</p>
   ) : null;
 
+  // Left-aligned single-column templates use the master-CV header shape: name on
+  // its own line, then phone/email with the location right-aligned on the same
+  // baseline, then the web links underneath. Centered templates keep the older
+  // single joined line, since a right-aligned location reads oddly under a
+  // centered name.
+  const contactStyle = { fontSize: t.sizes.contact, color: "#555" };
+  const stackedContact = t.layout !== "twoColumn" && t.headerAlign === "left";
+  const contactLine1 = [c.phone, c.email].filter((x) => x && x.trim()).join("  |  ");
+  const contactLine2 = [c.github, c.linkedin].filter((x) => x && x.trim()).join("  |  ");
+
   const Header = (
     <div style={{
       textAlign: t.layout === "twoColumn" ? "left" : t.headerAlign,
-      borderBottom: t.layout === "twoColumn" ? "none" : "2px solid " + t.accent,
+      borderBottom: t.layout === "twoColumn" ? "none" : (t.headerRule || 2) + "px solid " + t.accent,
       paddingBottom: t.layout === "twoColumn" ? 4 : 12, marginBottom: 12,
     }}>
       <div style={{ fontSize: t.sizes.name, fontWeight: 700, color: "#111", letterSpacing: "0.02em" }}>{c.name}</div>
-      {t.layout !== "twoColumn" && (
-        <div style={{ fontSize: t.sizes.contact, color: "#555", marginTop: 4 }}>{contactBits.join("  •  ")}</div>
-      )}
+      {t.layout !== "twoColumn" && (stackedContact ? (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ ...contactStyle, display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16 }}>
+            <span>{contactLine1}</span>
+            {c.location && <span style={{ whiteSpace: "nowrap" }}>{c.location}</span>}
+          </div>
+          {contactLine2 && <div style={contactStyle}>{contactLine2}</div>}
+        </div>
+      ) : (
+        <div style={{ ...contactStyle, marginTop: 4 }}>{contactBits.join("  •  ")}</div>
+      ))}
     </div>
   );
 
