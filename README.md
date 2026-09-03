@@ -48,11 +48,13 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-Run `SUPABASE_PHASE_1.sql`, then `SUPABASE_PHASE_2.sql`, then `SUPABASE_PHASE_3.sql`
-in the Supabase SQL Editor, in that order. Phase 2 enables Row Level Security; Phase 3
-adds the interview-prep auto-generate toggle and its honesty setting. **Run Phase 3
-before deploying this version** — the app's data load selects those columns and will
-fail to load anything until they exist.
+Run `SUPABASE_PHASE_1.sql`, then `SUPABASE_PHASE_2.sql`, then `SUPABASE_PHASE_3.sql`,
+then `SUPABASE_PHASE_4.sql` in the Supabase SQL Editor, in that order. Phase 2 enables
+Row Level Security; Phase 3 adds the interview-prep auto-generate toggle and its
+honesty setting; Phase 4 adds the interview-prep settings (trigger point, and which
+content to include/how deep) used by the gear icon next to the auto-generate toggle.
+**Run Phase 3 and Phase 4 before deploying this version** — the app's data load
+selects those columns and will fail to load anything until they exist.
 
 For the complete app, including the two API functions:
 
