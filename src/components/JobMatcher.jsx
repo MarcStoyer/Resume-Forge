@@ -31,7 +31,7 @@ export default function JobMatcher({ resume, applyResume, honesty, jd, setJd, se
         return;
       }
       const system = "You are given the raw text content of a job-posting web page (with nav, footer, and other noise). Extract ONLY the job description — title, responsibilities, qualifications, and about-the-role content. Omit navigation, cookie notices, footers, related jobs, application instructions. Return plain text, no markdown.";
-      const cd = await callClaude({ system, messages: [{ role: "user", content: data.text }], max_tokens: 3000 });
+      const cd = await callClaude({ system, messages: [{ role: "user", content: data.text }], max_tokens: 3000, tier: "extraction" });
       const clean = extractText(cd).trim();
       if (clean) setJd(clean);
       else setErr("Fetched the page but couldn't extract a job description. Try pasting it.");

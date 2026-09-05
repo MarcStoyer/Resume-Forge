@@ -14,6 +14,7 @@ const COLUMNS = [
   "interview_prep_auto",
   "interview_honesty",
   "interview_prep_settings",
+  "ai_settings",
 ].join(",");
 
 function throwStorageError(action, error) {
@@ -86,6 +87,9 @@ export const saveInterviewPrepAuto = async (v, userId) => saveField(userId, "int
 
 export const loadInterviewHonesty = async (userId) => loadField(userId, "interview_honesty", 75);
 export const saveInterviewHonesty = async (v, userId) => saveField(userId, "interview_honesty", v);
+
+export const loadAiSettings = async (userId) => loadField(userId, "ai_settings", null);
+export const saveAiSettings = async (v, userId) => saveField(userId, "ai_settings", v);
 
 export const loadInterviewPrepSettings = async (userId) => loadField(userId, "interview_prep_settings", null);
 export const saveInterviewPrepSettings = async (v, userId) => saveField(userId, "interview_prep_settings", v);

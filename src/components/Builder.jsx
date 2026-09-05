@@ -8,6 +8,7 @@ import HonestySlider from "./HonestySlider.jsx";
 import { TAG_COLORS } from "../lib/constants.js";
 import { uid } from "../lib/util.js";
 import { callClaude } from "../lib/api.js";
+import { webSearchTool, modelFor } from "../lib/models.js";
 import { extractText, extractJSON } from "../lib/parse.js";
 import { honestyPromptFragment } from "../lib/honesty.js";
 
@@ -142,7 +143,7 @@ export default function Builder({
         ? `Search the web for the role "${entry.role}" at "${entry.org}". Using real current job listings for this or similar roles, write 5 résumé bullets reflecting key responsibilities.`
         : `Write 5 strong, specific, achievement-oriented résumé bullets for the role "${entry.role}" at "${entry.org}". Be concrete.`;
       const body = { system, messages: [{ role: "user", content: user }] };
-      if (mode === "web") body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }];
+      if (mode === "web") body.tools = [webSearchTool(modelFor("writing"), 3)];
       const data = await callClaude(body);
       const arr = extractJSON(extractText(data));
       if (Array.isArray(arr) && arr.length) addBullets(secId, entry.id, arr, mode === "web" ? "WEB" : "AI");
