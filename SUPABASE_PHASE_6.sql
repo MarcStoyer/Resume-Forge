@@ -3,10 +3,15 @@
 -- Adds the per-user model choice behind the AI settings popover (which model
 -- handles parsing vs. writing). Run in the Supabase SQL Editor after Phase 1-5.
 --
--- Not blocking: the app merges whatever it finds over DEFAULT_AI_SETTINGS
--- (src/lib/models.js), so a null column simply means "use the defaults" and
--- deploying before running this degrades to the default model rather than
--- breaking. Run it before you want the setting to persist across sessions.
+-- Run this before (or immediately after) deploying. It was originally
+-- described as non-blocking, which was wrong: the data load named its columns
+-- explicitly, so a missing one failed the entire load with
+-- "column user_data.ai_settings does not exist" and the app could read nothing.
+--
+-- storage.js now selects "*", so a not-yet-migrated column is merely absent
+-- from the result and falls back to DEFAULT_AI_SETTINGS (src/lib/models.js).
+-- With that fix in place this really is non-blocking — until it is run, the
+-- model choice just won't persist between sessions.
 
 alter table public.user_data
   add column if not exists ai_settings jsonb;

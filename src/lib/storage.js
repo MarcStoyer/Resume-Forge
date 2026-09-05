@@ -2,20 +2,18 @@ import { getSupabase } from "./supabase.js";
 
 const TABLE = "user_data";
 
-const COLUMNS = [
-  "resume",
-  "template",
-  "honesty",
-  "cover_letter",
-  "jd",
-  "job_url",
-  "paper",
-  "applications",
-  "interview_prep_auto",
-  "interview_honesty",
-  "interview_prep_settings",
-  "ai_settings",
-].join(",");
+// Selected with "*" rather than an explicit column list on purpose.
+//
+// Naming columns explicitly means a deploy that ships code for a column before
+// its migration has been run fails the ENTIRE load with
+// "column user_data.<x> does not exist" — the app can't read anything, not just
+// the new setting. That happened with ai_settings (Phase 6).
+//
+// With "*", a column that doesn't exist yet is simply absent from the result,
+// and every reader already merges over a default
+// (`{ ...DEFAULTS, ...(data?.some_settings || {}) }`), so a not-yet-migrated
+// column degrades to its default instead of breaking the app. That is what
+// makes adding a settings column genuinely non-blocking.
 
 function throwStorageError(action, error) {
   throw new Error(`Could not ${action}: ${error.message}`);
@@ -29,7 +27,7 @@ function requireUserId(userId) {
 export async function loadUserData(userId) {
   const { data, error } = await getSupabase()
     .from(TABLE)
-    .select(COLUMNS)
+    .select("*")
     .eq("user_id", requireUserId(userId))
     .maybeSingle();
 
