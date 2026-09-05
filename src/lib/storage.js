@@ -40,6 +40,14 @@ async function loadField(userId, column, fallback = null) {
   return data?.[column] ?? fallback;
 }
 
+// PostgREST reports a write to a column that doesn't exist as PGRST204
+// ("Could not find the 'x' column of 'y' in the schema cache").
+function isMissingColumnError(error) {
+  if (!error) return false;
+  if (error.code === "PGRST204") return true;
+  return /could not find the .* column|does not exist/i.test(error.message || "");
+}
+
 async function saveField(userId, column, value) {
   const { error } = await getSupabase()
     .from(TABLE)
@@ -52,7 +60,17 @@ async function saveField(userId, column, value) {
       { onConflict: "user_id" },
     );
 
-  if (error) throwStorageError(`save ${column}`, error);
+  if (error) {
+    // A column whose migration hasn't been run yet shouldn't surface as a
+    // "Save failed" banner on every keystroke — the read path already falls
+    // back to defaults for it, so the app works, the value just isn't durable
+    // yet. Warn in the console and carry on; every other error still raises.
+    if (isMissingColumnError(error)) {
+      console.warn(`[storage] "${column}" isn't in the database yet — not persisted. Run the matching SUPABASE_PHASE_*.sql.`);
+      return;
+    }
+    throwStorageError(`save ${column}`, error);
+  }
 }
 
 export const loadResume = async (userId) => loadField(userId, "resume");
