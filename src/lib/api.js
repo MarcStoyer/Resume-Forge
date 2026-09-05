@@ -1,6 +1,7 @@
 import { getSupabase } from "./supabase.js";
+import { DEFAULT_AI_SETTINGS, modelFor } from "./models.js";
 
-export const MODEL = "claude-sonnet-4-6";
+export const MODEL = DEFAULT_AI_SETTINGS.writing;
 
 // Every call gets a hard ceiling so a hung request surfaces as an error
 // instead of leaving the UI stuck on "Generating…" indefinitely. Callers can
@@ -15,13 +16,14 @@ export async function authHeaders() {
   return token ? { authorization: `Bearer ${token}` } : {};
 }
 
-export async function callClaude({ system, messages, tools, max_tokens = 1500, model = MODEL, signal, timeoutMs = DEFAULT_TIMEOUT_MS }) {
+export async function callClaude({ system, messages, tools, max_tokens = 1500, model, tier = "writing", signal, timeoutMs = DEFAULT_TIMEOUT_MS }) {
+  const resolvedModel = model || modelFor(tier);
   let res;
   try {
     res = await fetch("/api/claude", {
       method: "POST",
       headers: { "content-type": "application/json", ...(await authHeaders()) },
-      body: JSON.stringify({ model, max_tokens, system, messages, tools }),
+      body: JSON.stringify({ model: resolvedModel, max_tokens, system, messages, tools }),
       signal: signal || AbortSignal.timeout(timeoutMs),
     });
   } catch (e) {

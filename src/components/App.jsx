@@ -11,12 +11,14 @@ import {
   loadUserData,
   saveResume, saveTemplate, saveHonesty, saveCoverLetter,
   saveJD, saveJobUrl, savePaper, saveApps,
-  saveInterviewPrepAuto, saveInterviewHonesty, saveInterviewPrepSettings,
+  saveInterviewPrepAuto, saveInterviewHonesty, saveInterviewPrepSettings, saveAiSettings,
 } from "../lib/storage.js";
 import { defaultResume } from "../data/defaultResume.js";
 import { TEMPLATES, getTemplate } from "../lib/templates.js";
 import { exportDocx } from "../lib/docxExport.js";
 import { extractResumeFromFile, confirmAndExtractResume } from "../lib/cvExtract.js";
+import { setActiveModels, DEFAULT_AI_SETTINGS } from "../lib/models.js";
+import AiSettingsPopover from "./AiSettingsPopover.jsx";
 import { deepClone, uid } from "../lib/util.js";
 import { historyEntry } from "../lib/funnel.js";
 import { generateInterviewPrep, DEFAULT_INTERVIEW_PREP_SETTINGS } from "../lib/interviewPrep.js";
@@ -37,6 +39,7 @@ export default function App() {
   const [interviewPrepAuto, setInterviewPrepAuto] = useState(false);
   const [interviewHonesty, setInterviewHonesty] = useState(75);
   const [interviewPrepSettings, setInterviewPrepSettings] = useState(DEFAULT_INTERVIEW_PREP_SETTINGS);
+  const [aiSettings, setAiSettings] = useState(DEFAULT_AI_SETTINGS);
   const [storageReady, setStorageReady] = useState(false);
   const [storageErr, setStorageErr] = useState("");
 
@@ -68,6 +71,7 @@ export default function App() {
         setInterviewPrepAuto(!!data?.interview_prep_auto);
         setInterviewHonesty(typeof data?.interview_honesty === "number" ? data.interview_honesty : 75);
         setInterviewPrepSettings({ ...DEFAULT_INTERVIEW_PREP_SETTINGS, ...(data?.interview_prep_settings || {}) });
+        setAiSettings({ ...DEFAULT_AI_SETTINGS, ...(data?.ai_settings || {}) });
         setStorageReady(true);
       } catch (e) {
         if (!cancelled) setStorageErr(e.message);
@@ -96,6 +100,9 @@ export default function App() {
   useEffect(() => persist(saveInterviewPrepAuto, interviewPrepAuto), [interviewPrepAuto, storageReady, user.id]);
   useEffect(() => persist(saveInterviewHonesty, interviewHonesty), [interviewHonesty, storageReady, user.id]);
   useEffect(() => persist(saveInterviewPrepSettings, interviewPrepSettings), [interviewPrepSettings, storageReady, user.id]);
+  useEffect(() => persist(saveAiSettings, aiSettings), [aiSettings, storageReady, user.id]);
+  // callClaude reads the active models from module state, so push every change in.
+  useEffect(() => { setActiveModels(aiSettings); }, [aiSettings]);
 
   async function logout() {
     setSigningOut(true);
@@ -270,6 +277,7 @@ export default function App() {
           <button onClick={() => fileRef.current?.click()} disabled={uploading} className="px-3 py-2 rounded-md text-sm font-medium border border-stone-300 hover:bg-stone-50 disabled:opacity-50">
             {uploading ? "Parsing…" : "📥 Upload CV"}
           </button>
+          <AiSettingsPopover settings={aiSettings} setSettings={setAiSettings} />
           <button onClick={markAppliedNow} disabled={!jd} className="px-3 py-2 rounded-md text-sm border border-sky-300 text-sky-700 hover:bg-sky-50 disabled:opacity-50" title="Save a snapshot of this résumé+cover+JD with status 'Applied'">
             ✓ Applied with this
           </button>

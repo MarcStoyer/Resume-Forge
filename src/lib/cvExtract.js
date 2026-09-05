@@ -82,6 +82,7 @@ export async function extractResumeFromFile(file) {
 
   if (!parsed) {
     const data = await callClaude({
+      tier: "extraction",
       system: CV_EXTRACTION_SYSTEM,
       messages: [{ role: "user", content }],
       max_tokens: 8000,
