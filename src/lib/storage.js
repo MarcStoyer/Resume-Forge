@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase.js";
+import { rowToRecord, recordToRow } from "./applicationRow.js";
 
 const TABLE = "user_data";
 
@@ -109,3 +110,110 @@ export const saveAiSettings = async (v, userId) => saveField(userId, "ai_setting
 
 export const loadInterviewPrepSettings = async (userId) => loadField(userId, "interview_prep_settings", null);
 export const saveInterviewPrepSettings = async (v, userId) => saveField(userId, "interview_prep_settings", v);
+
+
+// ---------------------------------------------------------------------------
+// Applications — one row per application (SUPABASE_PHASE_7.sql).
+//
+// Falls back to the legacy user_data.applications jsonb array when that table
+// doesn't exist yet, so the deploy works whether or not the migration has been
+// run. Shipping code ahead of a migration has broken this app twice; this makes
+// the ordering genuinely not matter.
+// ---------------------------------------------------------------------------
+
+const APPS_TABLE = "applications";
+let legacyApplications = null; // null = undetermined, true = table absent
+
+function isMissingTableError(error) {
+  if (!error) return false;
+  if (error.code === "42P01" || error.code === "PGRST205") return true;
+  return /relation .* does not exist|could not find the table/i.test(error.message || "");
+}
+
+export async function loadApplications(userId) {
+  const uid = requireUserId(userId);
+  const { data, error } = await getSupabase()
+    .from(APPS_TABLE)
+    .select("*")
+    .eq("user_id", uid)
+    .order("saved_at", { ascending: false });
+
+  if (error) {
+    if (isMissingTableError(error)) {
+      console.warn("[storage] applications table not found — falling back to the legacy jsonb array. Run SUPABASE_PHASE_7.sql.");
+      legacyApplications = true;
+      return loadField(uid, "applications", []);
+    }
+    throwStorageError("load applications", error);
+  }
+  legacyApplications = false;
+  return (data || []).map(rowToRecord);
+}
+
+// Writes one application. In legacy mode this still rewrites the whole array,
+// which is exactly the read-modify-write the new table exists to remove — so
+// it re-reads immediately beforehand to keep the race window as small as
+// possible until the migration is run.
+export async function saveApplication(record, userId) {
+  const uid = requireUserId(userId);
+  if (legacyApplications) {
+    const current = await loadField(uid, "applications", []);
+    const next = current.some((a) => a.id === record.id)
+      ? current.map((a) => (a.id === record.id ? record : a))
+      : [...current, record];
+    return saveField(uid, "applications", next);
+  }
+  const { error } = await getSupabase()
+    .from(APPS_TABLE)
+    .upsert(recordToRow(record, uid), { onConflict: "id" });
+  if (error) throwStorageError("save application", error);
+}
+
+export async function deleteApplication(id, userId) {
+  const uid = requireUserId(userId);
+  if (legacyApplications) {
+    const current = await loadField(uid, "applications", []);
+    return saveField(uid, "applications", current.filter((a) => a.id !== id));
+  }
+  const { error } = await getSupabase()
+    .from(APPS_TABLE)
+    .delete()
+    .eq("id", id)
+    .eq("user_id", uid);
+  if (error) throwStorageError("delete application", error);
+}
+
+// Bulk insert for CSV import and the extension. One statement instead of one
+// round trip per row.
+export async function saveApplications(records, userId) {
+  const uid = requireUserId(userId);
+  if (!records.length) return;
+  if (legacyApplications) {
+    const current = await loadField(uid, "applications", []);
+    return saveField(uid, "applications", [...current, ...records]);
+  }
+  const { error } = await getSupabase()
+    .from(APPS_TABLE)
+    .upsert(records.map((r) => recordToRow(r, uid)), { onConflict: "id" });
+  if (error) throwStorageError("save applications", error);
+}
+
+// "Have I already tracked this posting?" — an index lookup, which is what the
+// browser extension needs on every job page it detects.
+export async function findApplicationByJobUrl(jobUrl, userId) {
+  const uid = requireUserId(userId);
+  if (!jobUrl) return null;
+  if (legacyApplications) {
+    const current = await loadField(uid, "applications", []);
+    return current.find((a) => a.jobUrl === jobUrl) || null;
+  }
+  const { data, error } = await getSupabase()
+    .from(APPS_TABLE)
+    .select("*")
+    .eq("user_id", uid)
+    .eq("job_url", jobUrl)
+    .limit(1)
+    .maybeSingle();
+  if (error) throwStorageError("look up application", error);
+  return data ? rowToRecord(data) : null;
+}
