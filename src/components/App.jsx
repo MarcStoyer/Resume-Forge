@@ -10,7 +10,9 @@ import { useAuth } from "./AuthProvider.jsx";
 import {
   loadUserData,
   saveResume, saveTemplate, saveHonesty, saveCoverLetter,
-  saveJD, saveJobUrl, savePaper, saveApps,
+  saveJD, saveJobUrl, savePaper,
+  loadApplications, deleteApplication,
+  saveApplication as saveApplicationRow, saveApplications as saveApplicationRows,
   saveInterviewPrepAuto, saveInterviewHonesty, saveInterviewPrepSettings, saveAiSettings,
 } from "../lib/storage.js";
 import { defaultResume } from "../data/defaultResume.js";
@@ -67,7 +69,7 @@ export default function App() {
         setJd(typeof data?.jd === "string" ? data.jd : "");
         setJobUrl(typeof data?.job_url === "string" ? data.job_url : "");
         setPaper(data?.paper || "letter");
-        setApps(Array.isArray(data?.applications) ? data.applications : []);
+        setApps(await loadApplications(user.id));
         setInterviewPrepAuto(!!data?.interview_prep_auto);
         setInterviewHonesty(typeof data?.interview_honesty === "number" ? data.interview_honesty : 75);
         setInterviewPrepSettings({ ...DEFAULT_INTERVIEW_PREP_SETTINGS, ...(data?.interview_prep_settings || {}) });
@@ -95,7 +97,6 @@ export default function App() {
   useEffect(() => persist(saveCoverLetter, coverLetter), [coverLetter, storageReady, user.id]);
   useEffect(() => persist(saveJD, jd), [jd, storageReady, user.id]);
   useEffect(() => persist(saveJobUrl, jobUrl), [jobUrl, storageReady, user.id]);
-  useEffect(() => persist(saveApps, apps), [apps, storageReady, user.id]);
   useEffect(() => persist(savePaper, paper), [paper, storageReady, user.id]);
   useEffect(() => persist(saveInterviewPrepAuto, interviewPrepAuto), [interviewPrepAuto, storageReady, user.id]);
   useEffect(() => persist(saveInterviewHonesty, interviewHonesty), [interviewHonesty, storageReady, user.id]);
@@ -167,15 +168,50 @@ export default function App() {
   function commitSaveDialog(fields) {
     const status = saveDialog?.status || "saved";
     const rec = buildAppRecord(status, fields);
-    setApps((a) => [...a, rec]);
+    addApplications([rec]);
     setSaveDialog(null);
     if (interviewPrepAuto && interviewPrepSettings.trigger === "applied") runInterviewPrep(rec);
     if (status === "applied") setTab("apps");
     else alert("Saved! Find it in the Applications tab.");
   }
 
+  // Applications persist one row at a time now (SUPABASE_PHASE_7.sql) rather
+  // than rewriting the whole array on every change. Debounced per record so
+  // typing in a notes or cover-letter box doesn't fire a write per keystroke.
+  const appsRef = useRef(apps);
+  useEffect(() => { appsRef.current = apps; }, [apps]);
+  const appSaveTimers = useRef({});
+
+  function persistApp(record) {
+    if (!storageReady) return;
+    clearTimeout(appSaveTimers.current[record.id]);
+    appSaveTimers.current[record.id] = setTimeout(() => {
+      saveApplicationRow(record, user.id).catch((e) => setStorageErr(e.message));
+    }, 350);
+  }
+
+  function addApplications(records) {
+    if (!records.length) return;
+    setApps((a) => [...a, ...records]);
+    if (storageReady) {
+      saveApplicationRows(records, user.id).catch((e) => setStorageErr(e.message));
+    }
+  }
+
+  function removeApp(id) {
+    clearTimeout(appSaveTimers.current[id]);
+    setApps((a) => a.filter((x) => x.id !== id));
+    if (storageReady) {
+      deleteApplication(id, user.id).catch((e) => setStorageErr(e.message));
+    }
+  }
+
   function patchApp(id, patch) {
-    setApps((a) => a.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    const current = appsRef.current.find((x) => x.id === id);
+    if (!current) return;
+    const updated = { ...current, ...patch };
+    setApps((a) => a.map((x) => (x.id === id ? updated : x)));
+    persistApp(updated);
   }
   // Generates (or regenerates) interview prep for one saved application and
   // writes the result back onto it. Shared by the auto-trigger above, the
@@ -348,7 +384,7 @@ export default function App() {
 
       {tab === "apps" && (
         <ApplicationsTab
-          apps={apps} setApps={setApps}
+          apps={apps} addApplications={addApplications} removeApp={removeApp} patchApp={patchApp}
           currentResume={resume} currentCoverLetter={coverLetter} currentJd={jd}
           currentSnapshot={appSnapshot} setCurrentSnapshot={setAppSnapshot}
           loadApplication={loadApplication}

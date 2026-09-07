@@ -106,7 +106,7 @@ function fmtDate(ms) {
 }
 
 export default function ApplicationsTab({
-  apps, setApps, currentResume, currentCoverLetter, currentJd,
+  apps, addApplications, removeApp, patchApp, currentResume, currentCoverLetter, currentJd,
   currentSnapshot, setCurrentSnapshot, loadApplication,
   interviewPrepAuto, setInterviewPrepAuto, interviewHonesty, setInterviewHonesty,
   interviewPrepSettings, setInterviewPrepSettings, runInterviewPrep, cancelInterviewPrep,
@@ -141,8 +141,8 @@ export default function ApplicationsTab({
       const data = JSON.parse(text);
       if (!Array.isArray(data)) throw new Error("expected an array");
       if (!confirm(`Import ${data.length} applications? Appends to current ${apps.length}.`)) return;
-      const merged = [...apps, ...data.map((a) => ({ ...a, id: uid() }))];
-      setApps(merged);
+      const incoming = data.map((a) => ({ ...a, id: uid() }));
+      addApplications(incoming);
     } catch (err) {
       alert("Import failed: " + err.message);
     } finally {
@@ -150,7 +150,7 @@ export default function ApplicationsTab({
     }
   }
   function deleteApp(id) {
-    setApps(apps.filter((a) => a.id !== id));
+    removeApp(id);
     setConfirmDeleteId(null);
   }
   function load(app) {
@@ -163,9 +163,8 @@ export default function ApplicationsTab({
     setCurrentSnapshot(null);
   }
 
-  function updateApp(id, patch) {
-    setApps(apps.map((a) => (a.id === id ? { ...a, ...patch } : a)));
-  }
+  // Delegates to App.jsx, which owns per-record persistence.
+  const updateApp = patchApp;
   function setStatus(app, newStatus, note = "") {
     if (newStatus === app.status) return;
     const history = [...(app.statusHistory || []), historyEntry(newStatus, note)];
@@ -257,14 +256,14 @@ export default function ApplicationsTab({
       {addingManual && (
         <ManualApplicationDialog
           onCancel={() => setAddingManual(false)}
-          onSave={(record) => { setApps([...apps, record]); setAddingManual(false); setExpandedId(record.id); }}
+          onSave={(record) => { addApplications([record]); setAddingManual(false); setExpandedId(record.id); }}
         />
       )}
 
       {importing && (
         <ImportApplicationsDialog
           onCancel={() => setImporting(false)}
-          onImport={(records) => setApps([...apps, ...records])}
+          onImport={(records) => addApplications(records)}
         />
       )}
     </div>
