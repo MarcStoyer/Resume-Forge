@@ -1,0 +1,15 @@
+{
+  "name": "resume-forge-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Firefox/Zen extension that logs job postings to the Résumé Forge tracker.",
+  "scripts": {
+    "lint": "web-ext lint --source-dir=.",
+    "dev": "web-ext run --source-dir=. --browser-console",
+    "build": "web-ext build --source-dir=. --overwrite-dest",
+    "sign": "web-ext sign --source-dir=. --channel=unlisted --api-key=$AMO_JWT_ISSUER --api-secret=$AMO_JWT_SECRET"
+  },
+  "devDependencies": {
+    "web-ext": "^8.3.0"
+  }
+}

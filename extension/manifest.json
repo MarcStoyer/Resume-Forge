@@ -1,0 +1,81 @@
+{
+  "manifest_version": 3,
+  "name": "Résumé Forge Job Tracker",
+  "version": "0.1.0",
+  "description": "Capture a job posting and log it to your Résumé Forge tracker in one click, with the description kept for interview prep.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "resume-forge-tracker@marcstoyer.com",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://*.linkedin.com/*",
+    "https://*.indeed.com/*",
+    "https://*.greenhouse.io/*",
+    "https://*.lever.co/*",
+    "https://*.ashbyhq.com/*",
+    "https://*.myworkdayjobs.com/*",
+    "https://*.smartrecruiters.com/*",
+    "https://*.workable.com/*",
+    "https://*.joinhandshake.com/*",
+    "https://*.glassdoor.com/*",
+    "https://*.ziprecruiter.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "scripts": [
+      "src/background.js"
+    ],
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.linkedin.com/jobs/*",
+        "https://*.indeed.com/*",
+        "https://*.greenhouse.io/*",
+        "https://*.lever.co/*",
+        "https://*.ashbyhq.com/*",
+        "https://*.myworkdayjobs.com/*",
+        "https://*.smartrecruiters.com/*",
+        "https://*.workable.com/*",
+        "https://*.joinhandshake.com/*",
+        "https://*.glassdoor.com/*",
+        "https://*.ziprecruiter.com/*"
+      ],
+      "js": [
+        "src/content/detect.js"
+      ],
+      "css": [
+        "src/content/pill.css"
+      ],
+      "run_at": "document_idle",
+      "type": "module"
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "Résumé Forge Job Tracker",
+    "default_icon": {
+      "48": "icons/icon-48.png",
+      "96": "icons/icon-96.png"
+    }
+  },
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  }
+}

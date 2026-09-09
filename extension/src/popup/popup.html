@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <header>
+    <span class="brand">Résumé Forge</span>
+    <a id="open-app" href="#" target="_blank">Open tracker →</a>
+  </header>
+
+  <section id="signin" hidden>
+    <p class="lead">Sign in with your Résumé Forge account to log applications.</p>
+    <input id="email" type="email" placeholder="Email" autocomplete="username">
+    <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+    <button id="signin-btn" class="primary">Sign in</button>
+    <p id="signin-err" class="err" hidden></p>
+  </section>
+
+  <section id="no-job" hidden>
+    <p class="lead">No job posting detected on this page.</p>
+    <p class="hint">Open a posting on LinkedIn, Indeed, Greenhouse, Lever, Ashby, Workday and this will fill in automatically.</p>
+  </section>
+
+  <section id="tracked" hidden>
+    <div class="status-row">
+      <span id="tracked-badge" class="badge"></span>
+      <span id="tracked-label" class="tracked-label"></span>
+    </div>
+    <button id="advance" class="primary" hidden>Mark applied</button>
+    <p class="hint">Already in your tracker. Edit the rest in the app.</p>
+  </section>
+
+  <section id="capture" hidden>
+    <label>Company<input id="f-company"></label>
+    <label>Role<input id="f-role"></label>
+    <div class="row">
+      <label>Salary<input id="f-salary" placeholder="—"></label>
+      <label>Where<input id="f-source"></label>
+    </div>
+    <label class="jd-label">
+      <span>Job description <em id="jd-count"></em></span>
+      <textarea id="f-jd" rows="4"></textarea>
+    </label>
+    <p class="hint">The description is kept so interview prep can use it later.</p>
+    <div class="actions">
+      <button id="save" class="ghost">★ Save</button>
+      <button id="applied" class="primary">✓ Applied</button>
+    </div>
+    <p id="capture-err" class="err" hidden></p>
+  </section>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

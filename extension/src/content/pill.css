@@ -1,0 +1,27 @@
+/* Namespaced hard so a host page's CSS can't restyle it, and so it can't
+   restyle the host page either. all:initial resets everything inherited. */
+#rf-pill, #rf-pill * { all: initial; box-sizing: border-box; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+#rf-pill {
+  position: fixed; right: 18px; bottom: 18px; z-index: 2147483646;
+  display: flex; align-items: center; gap: 8px;
+  background: #ffffff; color: #1c1917;
+  border: 1px solid #d6d3d1; border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  padding: 8px 10px 8px 12px;
+  font-size: 13px; line-height: 1;
+}
+#rf-pill[data-hidden="true"] { display: none; }
+
+#rf-pill .rf-title { font-size: 12px; color: #57534e; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+#rf-pill .rf-btn {
+  display: inline-block; cursor: pointer; border-radius: 999px;
+  padding: 6px 10px; font-size: 12px; font-weight: 600; border: 1px solid transparent;
+}
+#rf-pill .rf-save { background: #f5f5f4; color: #44403c; border-color: #d6d3d1; }
+#rf-pill .rf-save:hover { background: #e7e5e4; }
+#rf-pill .rf-applied { background: #1f4e5f; color: #ffffff; }
+#rf-pill .rf-applied:hover { background: #173d4a; }
+#rf-pill .rf-state { font-size: 12px; font-weight: 600; color: #0f766e; padding: 6px 4px; display: inline-block; }
+#rf-pill .rf-x { cursor: pointer; color: #a8a29e; font-size: 14px; padding: 4px 6px; display: inline-block; }
+#rf-pill .rf-x:hover { color: #57534e; }
