@@ -16,6 +16,17 @@ conservative `og:`/title parse that leaves fields blank rather than guessing.
 Nothing is written until you press something. Viewing a posting is not applying
 to one, and a tracker full of jobs you merely browsed is worse than no tracker.
 
+## Signing in
+
+There is nothing to sign into. Résumé Forge authenticates with an emailed
+magic link — accounts have no password — so the extension reads the session
+supabase-js already keeps in the web app's own localStorage and adopts it.
+
+Sign in on the site once and the extension is connected. The popup's button
+opens the site and then waits, updating itself when the session appears. A
+content script on that one origin reads one key and never writes; no
+credentials are entered into, or stored by, the extension.
+
 ## Two ways to log
 
 - **In-page pill** — bottom-right on a recognised posting: `★ Save` and

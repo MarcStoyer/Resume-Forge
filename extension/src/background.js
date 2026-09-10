@@ -4,7 +4,7 @@
 // Firefox MV3 uses an event page (`background.scripts`), not a Chrome-style
 // service worker — so this file can hold short-lived state between events, but
 // must not assume it stays alive. Anything durable goes in storage.
-import { findByJobUrl, insertApplication, updateApplication, getSession } from "./lib/supabaseRest.js";
+import { findByJobUrl, insertApplication, updateApplication, getSession, adoptSession } from "./lib/supabaseRest.js";
 import { buildRow } from "./lib/buildRow.js";
 
 // Last scrape per tab, so the popup can render instantly instead of
@@ -28,6 +28,11 @@ async function lookup(jobUrl) {
 
 browser.runtime.onMessage.addListener(async (msg, sender) => {
   const tabId = sender.tab?.id;
+
+  if (msg.type === "session-from-app") {
+    await adoptSession(msg.session);
+    return { ok: true };
+  }
 
   if (msg.type === "job-detected") {
     const { signedIn, existing } = await lookup(msg.job.jobUrl);

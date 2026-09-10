@@ -1,4 +1,4 @@
-import { signIn, getSession } from "../lib/supabaseRest.js";
+import { getSession } from "../lib/supabaseRest.js";
 import { buildRow } from "../lib/buildRow.js";
 import { APP_URL } from "../lib/config.js";
 
@@ -72,18 +72,14 @@ $("advance").addEventListener("click", async (e) => {
   renderTracked(row);
 });
 
-$("signin-btn").addEventListener("click", async () => {
-  const btn = $("signin-btn");
-  btn.disabled = true; btn.textContent = "Signing in…";
-  $("signin-err").hidden = true;
-  try {
-    await signIn($("email").value.trim(), $("password").value);
-    await init();
-  } catch (e) {
-    $("signin-err").textContent = e.message;
-    $("signin-err").hidden = false;
-    btn.disabled = false; btn.textContent = "Sign in";
-  }
+$("open-signin").addEventListener("click", async () => {
+  await browser.tabs.create({ url: APP_URL });
+  $("waiting").hidden = false;
+  // The tab's content script reports the session once it appears, so just
+  // watch for it rather than making the user come back and click again.
+  const poll = setInterval(async () => {
+    if (await getSession()) { clearInterval(poll); init(); }
+  }, 1500);
 });
 
 async function init() {

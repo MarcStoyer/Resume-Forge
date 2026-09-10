@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Résumé Forge Job Tracker",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Capture a job posting and log it to your Résumé Forge tracker in one click, with the description kept for interview prep.",
   "browser_specific_settings": {
     "gecko": {
@@ -20,6 +20,7 @@
     "tabs"
   ],
   "host_permissions": [
+    "https://resume-forge-self.vercel.app/*",
     "https://*.linkedin.com/*",
     "https://*.indeed.com/*",
     "https://*.greenhouse.io/*",
@@ -61,6 +62,16 @@
       ],
       "css": [
         "src/content/pill.css"
+      ],
+      "run_at": "document_idle",
+      "type": "module"
+    },
+    {
+      "matches": [
+        "https://resume-forge-self.vercel.app/*"
+      ],
+      "js": [
+        "src/content/session.js"
       ],
       "run_at": "document_idle",
       "type": "module"

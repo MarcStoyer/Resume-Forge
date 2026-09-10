@@ -19,6 +19,14 @@ export async function signOut() {
   await browser.storage.local.remove(SESSION_KEY);
 }
 
+// Adopts the session read off the Résumé Forge tab. This is the only sign-in
+// path: the app uses magic links, so there is no password to collect.
+export async function adoptSession(session) {
+  if (!session) return signOut();
+  await setStored(session);
+  return session;
+}
+
 export async function signIn(email, password) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: "POST",
