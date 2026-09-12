@@ -5,7 +5,11 @@
 // A content script shares localStorage with the page it runs in, so this needs
 // no page-script injection and no credentials. It reads one key, on one
 // origin, and never writes.
-import { SESSION_STORAGE_KEY } from "../lib/config.js";
+// Content scripts are classic scripts — "type": "module" is not a real
+// content_scripts property, so a top-level import here is a syntax error and
+// the whole file silently never runs. Dynamic import of a web-accessible
+// resource is the supported way to share code with a content script.
+let SESSION_STORAGE_KEY;
 
 function readSession() {
   let raw;
@@ -34,8 +38,12 @@ function sync() {
   browser.runtime.sendMessage({ type: "session-from-app", session }).catch(() => {});
 }
 
-sync();
-// The magic-link redirect lands back here and writes the session a moment
-// later, so keep watching rather than reading once on load.
-setInterval(sync, 2000);
-window.addEventListener("storage", sync);
+(async function boot() {
+  ({ SESSION_STORAGE_KEY } = await import(browser.runtime.getURL("src/lib/config.js")));
+  console.debug("[Résumé Forge] session bridge active");
+  sync();
+  // The magic-link redirect lands back here and writes the session a moment
+  // later, so keep watching rather than reading once on load.
+  setInterval(sync, 2000);
+  window.addEventListener("storage", sync);
+})();

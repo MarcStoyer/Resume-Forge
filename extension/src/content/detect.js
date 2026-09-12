@@ -4,7 +4,8 @@
 // looking, rather than relying on them remembering the toolbar exists. The
 // popup stays available as the reliable path for pages where injection is
 // awkward.
-import { parseJobPage } from "../lib/jobParse.js";
+// See session.js — content scripts cannot use a top-level import.
+let parseJobPage;
 
 let job = null;
 let lastUrl = "";
@@ -103,7 +104,11 @@ browser.runtime.onMessage.addListener((msg) => {
   if (msg.type === "rescan") { lastUrl = ""; scan(); }
 });
 
-// SPA navigation gives no load event, so poll the URL. Cheap, and far more
-// reliable across boards than hooking history.pushState.
-scan();
-setInterval(scan, 1200);
+(async function boot() {
+  ({ parseJobPage } = await import(browser.runtime.getURL("src/lib/jobParse.js")));
+  console.debug("[Résumé Forge] job detector active");
+  // SPA navigation gives no load event, so poll the URL. Cheap, and far more
+  // reliable across boards than hooking history.pushState.
+  scan();
+  setInterval(scan, 1200);
+})();
