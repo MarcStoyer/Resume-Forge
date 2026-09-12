@@ -1,3 +1,4 @@
+import { adapterFor, normalizeLinkedInUrl } from "./siteAdapters.js";
 // Turning a job page into application fields.
 //
 // The primary source is schema.org JobPosting embedded as JSON-LD, which most
@@ -148,7 +149,7 @@ const TRACKING_PARAMS = /^(utm_|ref$|refId$|trk$|trackingId$|src$|source$|gh_src
 
 export function canonicalJobUrl(url) {
   try {
-    const u = new URL(url);
+    const u = new URL(normalizeLinkedInUrl(url));
     for (const key of [...u.searchParams.keys()]) {
       if (TRACKING_PARAMS.test(key)) u.searchParams.delete(key);
     }
@@ -201,8 +202,36 @@ export function parseFromDom(doc, url) {
 }
 
 export function parseJobPage(doc, url) {
-  const fromLd = parseJobPosting(collectJsonLd(doc));
-  const base = fromLd || parseFromDom(doc, url);
+  let host = "";
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { /* keep empty */ }
+
+  // JSON-LD first when it's there — it's structured and doesn't rot.
+  let base = parseJobPosting(collectJsonLd(doc));
+
+  // Then a site adapter. LinkedIn's split-pane browse view (and Workday)
+  // publish no JobPosting at all, and that view is how most postings are
+  // actually read, so without this LinkedIn detects almost nothing.
+  if (!base) {
+    const adapter = adapterFor(host);
+    if (adapter) {
+      const a = adapter.parse(doc);
+      if (a.role) {
+        base = {
+          role: a.role,
+          company: a.company,
+          location: a.location,
+          salary: a.salary,
+          jd: stripTags(a.jdHtml),
+          datePosted: "",
+          employmentType: "",
+          confidence: a.confidence,
+        };
+      }
+    }
+  }
+
+  if (!base) base = parseFromDom(doc, url);
+
   return {
     ...base,
     jobUrl: canonicalJobUrl(url),

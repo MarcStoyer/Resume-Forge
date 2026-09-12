@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Résumé Forge Job Tracker",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Capture a job posting and log it to your Résumé Forge tracker in one click, with the description kept for interview prep.",
   "browser_specific_settings": {
     "gecko": {

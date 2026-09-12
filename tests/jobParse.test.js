@@ -82,9 +82,19 @@ describe("canonicalJobUrl", () => {
     // Without this the same posting arrives as several different URLs and the
     // dedupe never fires.
     assert.equal(
-      canonicalJobUrl("https://linkedin.com/jobs/view/123?utm_source=x&refId=abc&trk=z"),
-      "https://linkedin.com/jobs/view/123"
+      canonicalJobUrl("https://boards.greenhouse.io/sila/jobs/1?utm_source=x&gh_src=abc"),
+      "https://boards.greenhouse.io/sila/jobs/1"
     );
+  });
+
+  test("collapses LinkedIn's split-pane and standalone views to one URL", () => {
+    // The browse view keeps the posting in ?currentJobId= while the canonical
+    // page is /jobs/view/<id>. Saving from either has to dedupe to one record,
+    // or the same job gets tracked twice.
+    const fromSplitPane = canonicalJobUrl("https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4321&discover=y");
+    const fromStandalone = canonicalJobUrl("https://linkedin.com/jobs/view/4321/?refId=abc&trk=z");
+    assert.equal(fromSplitPane, "https://www.linkedin.com/jobs/view/4321");
+    assert.equal(fromSplitPane, fromStandalone);
   });
   test("keeps parameters that actually identify the job", () => {
     assert.match(canonicalJobUrl("https://x.myworkdayjobs.com/job?jobId=R-42&utm_medium=email"), /jobId=R-42/);

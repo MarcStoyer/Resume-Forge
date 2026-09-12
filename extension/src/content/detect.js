@@ -11,10 +11,13 @@ let job = null;
 let lastUrl = "";
 
 function looksLikeJobPage(parsed) {
-  // JSON-LD JobPosting is proof. Otherwise require a plausible role and a
-  // URL that says "job" — better to show nothing than to badge every page.
+  // JSON-LD, or a site adapter that found both a title and a description.
   if (parsed.confidence === "high") return true;
+  // A site adapter that found a title but no description — accept it on a
+  // URL that says "job", since LinkedIn's browse view legitimately renders
+  // the description late.
   const urlSaysJob = /\/(jobs?|careers?|opening|position|vacanc)/i.test(location.pathname);
+  if (parsed.confidence === "medium") return urlSaysJob && parsed.role.length > 3;
   return urlSaysJob && parsed.role.length > 3;
 }
 
@@ -87,11 +90,13 @@ function renderPill(existing) {
 }
 
 async function scan() {
-  // Job boards are single-page apps; the URL changes without a reload.
-  if (location.href === lastUrl) return;
-  lastUrl = location.href;
-
   const parsed = parseJobPage(document, location.href);
+  // Keyed on the canonical job rather than the raw URL: LinkedIn's split pane
+  // swaps the posting in the right rail, sometimes without the address bar
+  // changing in a way that matters.
+  const key = parsed.jobUrl + "|" + parsed.role;
+  if (key === lastUrl) return;
+  lastUrl = key;
   if (!looksLikeJobPage(parsed)) { job = null; removePill(); return; }
   job = parsed;
 
